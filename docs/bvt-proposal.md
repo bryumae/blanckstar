@@ -103,7 +103,7 @@ The scenario is unknown to the player, but known internally to the simulation.
 
 ## MVP End
 
-The player succeeds when the spacecraft becomes temporarily captured by Earth.
+The player succeeds when the spacecraft becomes permanently captured by Earth and enters earth orbit
 
 A valid MVP success state is:
 
@@ -433,7 +433,7 @@ Not allowed:
 ship.burnArbitraryVector(direction, throttle, duration)
 ```
 
-RCS/gyroscopes may rotate the ship, but should not provide major translational thrust in MVP.
+gyroscopes may rotate the ship, but should not provide major translational thrust in MVP.
 
 ## 8.3 Orientation
 
@@ -467,33 +467,6 @@ range = c × signal_delay
 
 This gives distance to Earth.
 
-## 9.2 Difficulty Levels
-
-The Earth radio system supports three design levels.
-
-### Level 1 — Beginner
-
-After successful radio lock, the player gets:
-
-* Earth direction;
-* Earth range;
-* signal quality.
-
-This should be the default MVP mode.
-
-### Level 2 — Intermediate
-
-The signal gives distance, but direction must be found by antenna sweep.
-
-The antenna has three signal states:
-
-* strong;
-* weak;
-* lost.
-
-Signal quality depends on antenna pointing accuracy and possibly distance.
-
-### Level 3 — Hard
 
 The signal gives distance only.
 
@@ -583,37 +556,10 @@ But the player may not query the spacecraft’s true state.
 
 ## 11.1 MVP Bodies
 
-Physics-critical bodies:
-
 * Sun
 * Earth
 * Moon
-
-Visible/ephemeris reference bodies:
-
 * Mars
-* Venus
-* Jupiter
-
-## 11.2 Jupiter
-
-Adding Jupiter is acceptable if it is only:
-
-* visible;
-* available in ephemeris;
-* usable as a navigation reference.
-
-Do not include Jupiter in MVP as:
-
-* gravity source;
-* mission target;
-* scanning target;
-* moon system;
-* major trajectory perturbation source.
-
-Jupiter can enrich the sky without increasing spacecraft dynamics complexity too much.
-
----
 
 # 12. Scripting System
 
@@ -760,21 +706,6 @@ These may exist internally or in developer mode, but not in normal player script
 
 # 13. User Interface
 
-## 13.1 Style
-
-The UI should be diegetic: the player is interacting with the old backup computer.
-
-Visual inspiration:
-
-* early-2000s operating systems;
-* blue/gray window frames;
-* chunky buttons;
-* fake boot screen;
-* recovery-mode warnings;
-* old help files;
-* primitive terminal/script editor.
-
-Avoid copyrighted real OS assets.
 
 ## 13.2 MVP Screens
 
@@ -790,10 +721,11 @@ Required MVP screens:
 * ship status panel;
 * help/manual screen;
 * failure/success screen.
+* telescope/star view;
+
 
 Optional MVP screens:
 
-* telescope/star view;
 * scenario selector;
 * debug map;
 * debug inspector.
