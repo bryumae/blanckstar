@@ -1,0 +1,12 @@
+- pre made animations of     
+  - hibernations     
+  - crash landing     
+  - worm hole     
+  - broken main computer         
+    - emergency computer            
+    - with windows xp logo  
+    - include later:     
+      - more celestial bodies    
+      - precision errors     
+      - doppler effect calculations     
+      - other calculations
