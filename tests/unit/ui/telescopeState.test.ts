@@ -3,6 +3,7 @@ import {
   addIdentified,
   canMeasureSeparation,
   createInitialState,
+  removeIdentified,
   setSepSelection,
   withFov,
   withMode,
@@ -39,6 +40,53 @@ describe('addIdentified', () => {
     s = addIdentified(s, { kind: 'star', id: 'star:0', name: 'Vega' });
     const again = addIdentified(s, { kind: 'star', id: 'star:0', name: 'Vega' });
     expect(again).toBe(s);
+  });
+});
+
+describe('removeIdentified', () => {
+  it('removes the object with the matching id', () => {
+    let s = createInitialState();
+    s = addIdentified(s, { kind: 'body', id: 'earth', name: 'Earth', bodyId: 'earth' });
+    s = addIdentified(s, { kind: 'star', id: 'star:0', name: 'Vega' });
+    s = removeIdentified(s, 'earth');
+    expect(s.identified).toHaveLength(1);
+    expect(s.identified[0]!.id).toBe('star:0');
+  });
+
+  it('is a no-op (referentially stable) when the id is not present', () => {
+    let s = createInitialState();
+    s = addIdentified(s, { kind: 'body', id: 'earth', name: 'Earth', bodyId: 'earth' });
+    const again = removeIdentified(s, 'mars');
+    expect(again).toBe(s);
+  });
+
+  it('clears a separation selection that pointed at the removed object', () => {
+    let s = createInitialState();
+    s = addIdentified(s, { kind: 'body', id: 'earth', name: 'Earth', bodyId: 'earth' });
+    s = addIdentified(s, { kind: 'body', id: 'mars', name: 'Mars', bodyId: 'mars' });
+    s = setSepSelection(s, 'A', 'earth');
+    s = setSepSelection(s, 'B', 'mars');
+    s = withSeparationResult(s, 1.2);
+    s = withSeparationLogged(s);
+
+    s = removeIdentified(s, 'earth');
+    expect(s.sepA).toBeNull();
+    expect(s.sepB).toBe('mars');
+    expect(s.lastSepRadians).toBeNull();
+    expect(s.lastSepLogged).toBe(false);
+  });
+
+  it('leaves separation selections untouched when the removed object was not selected', () => {
+    let s = createInitialState();
+    s = addIdentified(s, { kind: 'body', id: 'earth', name: 'Earth', bodyId: 'earth' });
+    s = addIdentified(s, { kind: 'body', id: 'mars', name: 'Mars', bodyId: 'mars' });
+    s = addIdentified(s, { kind: 'star', id: 'star:0', name: 'Vega' });
+    s = setSepSelection(s, 'A', 'earth');
+    s = setSepSelection(s, 'B', 'mars');
+
+    s = removeIdentified(s, 'star:0');
+    expect(s.sepA).toBe('earth');
+    expect(s.sepB).toBe('mars');
   });
 });
 

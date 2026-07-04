@@ -35,6 +35,18 @@ export function addIdentified(
   return { ...state, identified: [...state.identified, obj] };
 }
 
+// Remove one identified object by id. Clears any separation-tool selection
+// that pointed at it (and the stale measurement that selection produced),
+// since a removed object can no longer be measured against.
+export function removeIdentified(state: TelescopeUiState, id: string): TelescopeUiState {
+  const identified = state.identified.filter((o) => o.id !== id);
+  if (identified.length === state.identified.length) return state;
+  const sepA = state.sepA === id ? null : state.sepA;
+  const sepB = state.sepB === id ? null : state.sepB;
+  if (sepA === state.sepA && sepB === state.sepB) return { ...state, identified };
+  return { ...state, identified, sepA, sepB, lastSepRadians: null, lastSepLogged: false };
+}
+
 export function setSepSelection(
   state: TelescopeUiState,
   which: 'A' | 'B',

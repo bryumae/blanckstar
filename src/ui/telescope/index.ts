@@ -18,6 +18,7 @@ import {
   addIdentified,
   canMeasureSeparation,
   createInitialState,
+  removeIdentified,
   setSepSelection,
   withFov,
   withMode,
@@ -232,7 +233,16 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
         const kind = document.createElement('span');
         kind.className = 'telescope-id-kind';
         kind.textContent = obj.kind === 'star' ? 'STAR' : 'BODY';
-        row.append(dot, name, kind);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'telescope-id-remove';
+        removeBtn.type = 'button';
+        removeBtn.textContent = '✕';
+        removeBtn.setAttribute('aria-label', `Remove ${obj.name ?? obj.id}`);
+        removeBtn.addEventListener('click', () => {
+          ui = removeIdentified(ui, obj.id);
+          render();
+        });
+        row.append(dot, name, kind, removeBtn);
         idList.appendChild(row);
       }
     }
@@ -350,8 +360,25 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     if (hit) {
       ui = addIdentified(ui, candidateToIdentified(hit));
       render();
+      showClickLabel(hit.name ?? hit.id, e.clientX - rect.left, e.clientY - rect.top);
     }
   });
+
+  // Transient name label at the click point, so identifying an object gives
+  // immediate feedback in the view itself rather than only in the sidebar
+  // list. Fades out and is removed shortly after.
+  const CLICK_LABEL_LIFETIME_MS = 1600;
+  const CLICK_LABEL_FADE_MS = 600;
+  function showClickLabel(text: string, x: number, y: number): void {
+    const label = document.createElement('div');
+    label.className = 'telescope-click-label';
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
+    label.textContent = text;
+    labelLayer.appendChild(label);
+    setTimeout(() => label.classList.add('is-fading'), CLICK_LABEL_LIFETIME_MS - CLICK_LABEL_FADE_MS);
+    setTimeout(() => label.remove(), CLICK_LABEL_LIFETIME_MS);
+  }
 
   sepASelect.addEventListener('change', () => {
     ui = setSepSelection(ui, 'A', sepASelect.value || null);
