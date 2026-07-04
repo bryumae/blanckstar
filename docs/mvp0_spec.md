@@ -194,7 +194,7 @@ Primary screens:
 2. **Sequence & Calculation** — sequence coding plus calculation space. It may use tabs for scripts, console output, calculator, candidate estimates, candidate-search tables, and trajectory prediction.
 3. **Data** — all remaining operational data: radio locks, Earth beacon status/light-time details, ephemeris queries, measurement log, ship information, scheduled burns, active script status, time controls, and entered-state analysis.
 
-The Data screen is also where the player analyzes any **inserted state**: a player-entered or selected candidate position+velocity+epoch. From that inserted state only, the game displays closest approach to Earth over a selected prediction horizon, an extension point for later closest-approach readouts to other planets, and Earth-relative orbital information such as apoapsis/apogee, periapsis/perigee, and inclination when those values are meaningful. These readouts must be clearly labeled as estimate-derived and must never use the hidden true ship state.
+The Data screen is also where the player analyzes any **inserted state**: a player-entered or selected candidate position+velocity+epoch. From that inserted state only, the game displays closest approach to Earth over a selected prediction horizon, an extension point for later closest-approach readouts to other planets, and Earth-relative orbital information such as apoapsis/apogee, periapsis/perigee, and inclination. These readouts must be clearly labeled as estimate-derived and must never use the hidden true ship state.
 
 ### 7.1 Outside view + telescope
 
