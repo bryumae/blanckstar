@@ -94,3 +94,25 @@ Running list of comments/problems found while manually testing the app
      from `main.ts` (no more separate private mirror inside Data).
    - Extracted the `card()` helper to `src/ui/dataCard.ts` since 3 modules
      now build the same panel markup.
+
+7. **Telescope: filter identified objects by type.** Added a "Filter ▾"
+   dropdown next to the "IDENTIFIED OBJECTS" header with checkboxes for
+   Bodies/Stars — unchecking a kind hides matching rows from the list (the
+   "X of Y tagged" count stays unfiltered/absolute). Caught and fixed a bug
+   in the same change: a bare `window` click-to-close listener was also
+   firing on clicks inside the dropdown menu itself, closing it after every
+   single checkbox toggle — fixed by stopping propagation on clicks inside
+   the menu.
+
+8. **Follow-up polish on the filter dropdown:**
+   - **FOV badge vertical alignment bug.** "FIELD OF VIEW" label and its
+     value weren't vertically centered in the top-right badge — fixed by
+     adding `align-items: center` to `.telescope-overlay`.
+   - **Filter now also restricts the Angular Separation selects.** Body
+     A/B dropdowns previously always listed every identified object
+     regardless of the sidebar filter; both now share the same filtered
+     list (`options = visibleIdentified`).
+   - **Split "Stars" into "Named Stars" / "Numeric Stars".** A star is
+     "named" if its catalog entry has a real name (e.g. Toliman), else
+     "numeric" (shows as `star:NNNN`) — the numeric ones are what flood
+     the list, so they're now independently filterable.

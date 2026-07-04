@@ -29,6 +29,7 @@
 .telescope-overlay {
   position: absolute;
   display: flex;
+  align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
 }
@@ -82,7 +83,6 @@
 .telescope-fov-value {
   font-size: 16px;
   color: var(--accent);
-  margin-top: 2px;
 }
 
 .telescope-zoom-bar {
@@ -255,6 +255,67 @@
   font-size: 10px;
   color: var(--text-faint);
   margin-top: 3px;
+}
+
+.telescope-id-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.telescope-id-filter {
+  position: relative;
+}
+
+.telescope-id-filter-btn {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: 5px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.telescope-id-filter-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}
+
+.telescope-id-filter-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 2;
+  min-width: 120px;
+  background: rgba(10, 12, 17, 0.96);
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  padding: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.telescope-id-filter-menu.is-open {
+  display: block;
+}
+
+.telescope-id-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.telescope-id-filter-item:hover {
+  background: var(--bg-active);
 }
 
 .telescope-id-list {

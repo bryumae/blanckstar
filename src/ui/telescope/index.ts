@@ -13,7 +13,7 @@ import {
 } from '../../render/picking';
 import { raDecToUnit } from '../../render/astro';
 import { VISIBLE_BODIES, computeBodyPlacement } from '../../render/bodies';
-import type { RenderFrameState, TelescopeInstruments } from '../../render/types';
+import type { IdentifiedObject, RenderFrameState, TelescopeInstruments } from '../../render/types';
 import {
   addIdentified,
   canMeasureSeparation,
@@ -126,12 +126,64 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
 
   const idSection = document.createElement('div');
   idSection.className = 'telescope-sidebar-section';
+  const idHeaderRow = document.createElement('div');
+  idHeaderRow.className = 'telescope-id-header-row';
   const idTitle = document.createElement('div');
   idTitle.className = 'telescope-sidebar-title';
   idTitle.textContent = 'IDENTIFIED OBJECTS';
+
+  // ---- kind filter dropdown ----
+  // Stars split into "named" (a real proper name, e.g. Toliman) vs "numeric"
+  // (catalog-index-only id like star:162) since the latter floods the list.
+  type FilterCategory = 'body' | 'namedStar' | 'numericStar';
+  function categoryOf(obj: IdentifiedObject): FilterCategory {
+    if (obj.kind === 'body') return 'body';
+    return obj.name !== null ? 'namedStar' : 'numericStar';
+  }
+  const FILTER_OPTIONS: readonly { category: FilterCategory; label: string }[] = [
+    { category: 'body', label: 'Bodies' },
+    { category: 'namedStar', label: 'Named Stars' },
+    { category: 'numericStar', label: 'Numeric Stars' },
+  ];
+  const visibleCategories = new Set<FilterCategory>(FILTER_OPTIONS.map((o) => o.category));
+
+  const filterWrap = document.createElement('div');
+  filterWrap.className = 'telescope-id-filter';
+  const filterBtn = document.createElement('button');
+  filterBtn.type = 'button';
+  filterBtn.className = 'telescope-id-filter-btn';
+  filterBtn.textContent = 'Filter ▾';
+  filterBtn.setAttribute('aria-label', 'Filter identified objects by type');
+  const filterMenu = document.createElement('div');
+  filterMenu.className = 'telescope-id-filter-menu';
+  for (const { category, label } of FILTER_OPTIONS) {
+    const item = document.createElement('label');
+    item.className = 'telescope-id-filter-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = true;
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) visibleCategories.add(category);
+      else visibleCategories.delete(category);
+      render();
+    });
+    const text = document.createElement('span');
+    text.textContent = label;
+    item.append(checkbox, text);
+    filterMenu.appendChild(item);
+  }
+  filterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    filterMenu.classList.toggle('is-open');
+  });
+  filterMenu.addEventListener('click', (e) => e.stopPropagation());
+  filterWrap.append(filterBtn, filterMenu);
+  window.addEventListener('click', () => filterMenu.classList.remove('is-open'));
+
+  idHeaderRow.append(idTitle, filterWrap);
   const idSubtitle = document.createElement('div');
   idSubtitle.className = 'telescope-sidebar-subtitle';
-  idSection.append(idTitle, idSubtitle);
+  idSection.append(idHeaderRow, idSubtitle);
 
   const idList = document.createElement('div');
   idList.className = 'telescope-id-list';
@@ -232,13 +284,19 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     idSubtitle.textContent = `${ui.identified.length} of ${VISIBLE_BODIES.length + deps.starCatalog.length} catalog targets tagged`;
 
     idList.textContent = '';
+    const visibleIdentified = ui.identified.filter((o) => visibleCategories.has(categoryOf(o)));
     if (ui.identified.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'telescope-id-empty';
       empty.textContent = 'Nothing identified yet — click objects in the view.';
       idList.appendChild(empty);
+    } else if (visibleIdentified.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'telescope-id-empty';
+      empty.textContent = 'No identified objects match the filter.';
+      idList.appendChild(empty);
     } else {
-      for (const obj of ui.identified) {
+      for (const obj of visibleIdentified) {
         const row = document.createElement('div');
         row.className = 'telescope-id-row';
         const dot = document.createElement('span');
@@ -265,7 +323,7 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
       }
     }
 
-    const options = ui.identified;
+    const options = visibleIdentified;
     for (const [select, current] of [
       [sepASelect, ui.sepA],
       [sepBSelect, ui.sepB],
