@@ -6,9 +6,8 @@
 // through the injected `send`/listener seam (ADR-0001) — never imports src/sim
 // internals beyond the frozen message-protocol types.
 import type { EphemerisData } from '../../core/ephemerisTypes';
-import { positionAt, velocityAt } from '../../core/ephemerisInterp';
-import { AU } from '../../core/constants';
 import type { CandidateStore } from '../candidateStore';
+import { card } from '../dataCard';
 import type {
   BurnEndedEvent,
   BurnStartedEvent,
@@ -21,17 +20,8 @@ import type {
   SimEvent,
   SkipProgressEvent,
 } from '../../sim/messages';
-import type {
-  BodyId,
-  Measurement,
-  RadioLockData,
-  ScheduledBurn,
-  ShipState,
-  Vector3,
-  WarpFactor,
-} from '../../sim/types';
+import type { RadioLockData, ScheduledBurn, ShipState, WarpFactor } from '../../sim/types';
 import { WARP_FACTORS } from '../../sim/types';
-import { createMeasurementMirror, type MeasurementMirror } from './measurementMirror';
 import {
   insertedOrbitalElements,
   runClosestApproachChunked,
@@ -39,17 +29,7 @@ import {
   type InsertedState,
   type OrbitReferenceFrame,
 } from './insertedStateAnalysis';
-import {
-  fmtDegrees,
-  fmtKm,
-  fmtKmPerS,
-  fmtKmVec,
-  fmtMet,
-  fmtNumber,
-  fmtScientific,
-  fmtUtc,
-  fmtVec,
-} from './format';
+import { fmtDegrees, fmtKm, fmtKmPerS, fmtMet, fmtNumber, fmtScientific, fmtUtc, fmtVec } from './format';
 import './data.css';
 
 export interface DataScreenDeps {
@@ -58,50 +38,10 @@ export interface DataScreenDeps {
   readonly addSimListener: (cb: (e: SimEvent) => void) => void;
   readonly removeSimListener: (cb: (e: SimEvent) => void) => void;
   readonly candidates: CandidateStore;
-  readonly exportText?: (filename: string, text: string) => void;
 }
 
 export interface DataScreenHandle {
   destroy(): void;
-}
-
-const BODY_IDS: readonly BodyId[] = ['sun', 'earth', 'moon', 'mars', 'venus', 'jupiter'];
-const BODY_COLORS: Readonly<Record<BodyId, string>> = {
-  sun: '#ffd15a',
-  earth: '#4cc9e0',
-  moon: '#94a1b3',
-  mars: '#e0655f',
-  venus: '#e0b455',
-  jupiter: '#a78bfa',
-};
-
-function bodyLabel(id: BodyId): string {
-  return id.charAt(0).toUpperCase() + id.slice(1);
-}
-
-function defaultExportText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function card(spanClass: string, title: string): { el: HTMLDivElement; header: HTMLDivElement; body: HTMLDivElement } {
-  const el = document.createElement('div');
-  el.className = `data-card ${spanClass}`;
-  const header = document.createElement('div');
-  header.className = 'data-card-header';
-  const titleEl = document.createElement('span');
-  titleEl.className = 'data-card-title';
-  titleEl.textContent = title;
-  header.appendChild(titleEl);
-  const body = document.createElement('div');
-  body.className = 'data-card-body';
-  el.append(header, body);
-  return { el, header, body };
 }
 
 function row(label: string, value: string, cls = ''): HTMLDivElement {
@@ -120,8 +60,6 @@ function row(label: string, value: string, cls = ''): HTMLDivElement {
 export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataScreenHandle {
   root.textContent = '';
   root.classList.add('data-screen');
-
-  const mirror = createMeasurementMirror();
 
   // Latest known state (from `state` events). Only fields the spec allows to
   // surface are ever read by the render functions below — position/velocity
@@ -397,176 +335,7 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
     interruptNoteEl.textContent = interruptNote;
   }
 
-  // ==================== 5. Ephemeris query ====================
-  const ephemCard = card('data-card--span-7', 'EPHEMERIS · heliocentric ecliptic J2000 (km)');
-  const ephemNow = document.createElement('span');
-  ephemNow.style.fontFamily = 'var(--font-mono)';
-  ephemNow.style.fontSize = '10px';
-  ephemNow.style.color = 'var(--text-faint)';
-  ephemCard.header.appendChild(ephemNow);
-
-  const queryForm = document.createElement('div');
-  queryForm.className = 'data-query-form';
-  const bodySelect = document.createElement('select');
-  bodySelect.className = 'data-select';
-  for (const id of BODY_IDS) {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = bodyLabel(id);
-    bodySelect.appendChild(opt);
-  }
-  bodySelect.value = 'earth';
-  const dateInput = document.createElement('input');
-  dateInput.className = 'data-input';
-  dateInput.type = 'datetime-local';
-  dateInput.style.width = '190px';
-  const queryBtn = document.createElement('button');
-  queryBtn.className = 'data-btn';
-  queryBtn.style.width = 'auto';
-  queryBtn.style.flex = '0 0 auto';
-  queryBtn.style.padding = '9px 14px';
-  queryBtn.textContent = 'Query';
-  queryForm.append(bodySelect, dateInput, queryBtn);
-
-  const queryResult = document.createElement('div');
-  queryResult.className = 'data-query-result';
-  queryResult.textContent = 'Enter a time and query a body to see its heliocentric state.';
-
-  const ephemTableWrap = document.createElement('div');
-  const ephemTable = document.createElement('table');
-  ephemTable.className = 'data-table';
-  ephemTable.innerHTML = `
-    <thead><tr>
-      <th>BODY</th><th>X</th><th>Y</th><th>Z</th><th>|r| (AU)</th>
-    </tr></thead>
-    <tbody></tbody>
-  `;
-  ephemTableWrap.appendChild(ephemTable);
-
-  ephemCard.body.remove();
-  ephemCard.el.append(queryForm, queryResult, ephemTableWrap);
-
-  function runQuery(): void {
-    const body = bodySelect.value as BodyId;
-    const t = dateInput.value ? Math.floor(new Date(dateInput.value).getTime() / 1000) : simTime;
-    try {
-      const pos = positionAt(deps.ephemeris, body, t);
-      const vel = velocityAt(deps.ephemeris, body, t);
-      queryResult.innerHTML =
-        `<span class="label">${bodyLabel(body)} @ ${fmtUtc(t)}</span><br/>` +
-        `<span class="label">position</span> ${fmtKmVec(pos)}<br/>` +
-        `<span class="label">velocity</span> ${fmtKmVec(vel)} km/s`;
-    } catch (err) {
-      queryResult.textContent = `Out of ephemeris coverage: ${(err as Error).message}`;
-    }
-  }
-  queryBtn.addEventListener('click', runQuery);
-
-  function renderEphemTable(): void {
-    ephemNow.textContent = `@ ${fmtUtc(simTime)}`;
-    const tbody = ephemTable.querySelector('tbody')!;
-    tbody.textContent = '';
-    for (const id of BODY_IDS) {
-      let pos: Vector3;
-      try {
-        pos = positionAt(deps.ephemeris, id, simTime);
-      } catch {
-        continue;
-      }
-      const r = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><span class="data-body-dot" style="background:${BODY_COLORS[id]}"></span>${bodyLabel(id)}</td>
-        <td>${(pos.x / 1000).toFixed(0)}</td>
-        <td>${(pos.y / 1000).toFixed(0)}</td>
-        <td>${(pos.z / 1000).toFixed(0)}</td>
-        <td>${(r / AU).toFixed(4)}</td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }
-
-  // ==================== 6. Measurement log ====================
-  const logCard = card('data-card--span-12', 'MEASUREMENT LOG · append-only · this run');
-  const exportBtn = document.createElement('button');
-  exportBtn.className = 'data-log-export';
-  exportBtn.textContent = '↓ export as text';
-  logCard.header.appendChild(exportBtn);
-  const logTableWrap = document.createElement('div');
-  const logTable = document.createElement('table');
-  logTable.className = 'data-table';
-  logTable.innerHTML = `
-    <thead><tr>
-      <th>MET / UTC</th><th>TYPE</th><th>READOUT</th><th>NOTE</th>
-    </tr></thead>
-    <tbody></tbody>
-  `;
-  logTableWrap.appendChild(logTable);
-  logCard.body.remove();
-  logCard.el.appendChild(logTableWrap);
-
-  function measurementReadout(m: Measurement): string {
-    switch (m.data.kind) {
-      case 'radioLock':
-        return `range ${fmtKm(m.data.rangeMeters)} · dir ${fmtVec(m.data.direction, 2)}`;
-      case 'sunDirection':
-        return `dir ${fmtVec(m.data.direction, 3)}`;
-      case 'starAttitude':
-        return `forward ${fmtVec(m.data.forward, 3)}`;
-      case 'angularSeparation':
-        return `${bodyLabel(m.data.bodyA)} ↔ ${bodyLabel(m.data.bodyB)} = ${fmtDegrees(m.data.radians)}`;
-      default:
-        return '';
-    }
-  }
-
-  function exportLogText(): string {
-    const lines = mirror.all().map((m) => {
-      const note = m.note ? ` — ${m.note}` : '';
-      return `${fmtUtc(m.simTime)}\t${m.data.kind}\t${measurementReadout(m)}${note}`;
-    });
-    return lines.join('\n');
-  }
-
-  exportBtn.addEventListener('click', () => {
-    const text = exportLogText();
-    const exportFn = deps.exportText ?? defaultExportText;
-    exportFn('measurement-log.txt', text);
-  });
-
-  function renderLog(): void {
-    const tbody = logTable.querySelector('tbody')!;
-    tbody.textContent = '';
-    for (const m of mirror.all()) {
-      const tr = document.createElement('tr');
-      const noteCell = document.createElement('td');
-      const noteInput = document.createElement('input');
-      noteInput.className = 'data-log-note-input';
-      noteInput.value = m.note ?? '';
-      noteInput.placeholder = 'add note…';
-      noteInput.addEventListener('change', () => {
-        deps.send({ type: 'annotateMeasurement', id: m.id, note: noteInput.value });
-        mirror.annotate(m.id, noteInput.value);
-      });
-      noteCell.appendChild(noteInput);
-
-      const tagCell = document.createElement('td');
-      const tag = document.createElement('span');
-      tag.className = 'data-log-tag';
-      tag.textContent = m.data.kind;
-      tagCell.appendChild(tag);
-
-      tr.innerHTML = `<td>${fmtUtc(m.simTime)} · ${fmtMet(m.simTime - (deps.ephemeris ? simEpoch : 0))}</td>`;
-      const readoutCell = document.createElement('td');
-      readoutCell.textContent = measurementReadout(m);
-      tr.append(tagCell, readoutCell, noteCell);
-      tbody.appendChild(tr);
-    }
-  }
-
-  let simEpoch = 0;
-
-  // ==================== 7. Inserted-state analysis ====================
+  // ==================== 5. Inserted-state analysis ====================
   const analysisCard = card('data-card--span-5', 'INSERTED-STATE ANALYSIS');
   const refToggle = document.createElement('div');
   refToggle.className = 'data-toggle-group';
@@ -789,15 +558,7 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
   });
 
   // ==================== assembly ====================
-  root.append(
-    radio.el,
-    shipCard.el,
-    timeCard.el,
-    ephemCard.el,
-    burnsCard.el,
-    analysisCard.el,
-    logCard.el,
-  );
+  root.append(radio.el, shipCard.el, timeCard.el, burnsCard.el, analysisCard.el);
 
   renderCandidateSelect();
   const unsubscribeCandidates = deps.candidates.subscribe(renderCandidateSelect);
@@ -807,16 +568,12 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
     renderShip();
     renderBurns();
     renderTime();
-    renderEphemTable();
-    renderLog();
   }
   render();
 
   function onSimEvent(e: SimEvent): void {
     switch (e.type) {
       case 'ready':
-        simEpoch = e.epoch;
-        mirror.clear();
         lastRadioLock = null;
         radioLockCount = 0;
         scheduledBurns = [];
@@ -835,7 +592,6 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
       }
       case 'measurementAdded': {
         const ev = e as MeasurementAddedEvent;
-        mirror.add(ev.measurement);
         if (ev.measurement.data.kind === 'radioLock') {
           lastRadioLock = ev.measurement.data;
           radioLockCount += 1;

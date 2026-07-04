@@ -57,3 +57,40 @@ Running list of comments/problems found while manually testing the app
      right-align/shrink it) so they don't collide.
    - Status: fixed — hint moved to top-left (`top: 60px; left: 14px`),
      below the mode toggle, clear of the zoom bar.
+
+4. **Telescope: identified objects survive starting a fresh game.** Starting
+   a new scenario didn't clear "Identified Objects" from the previous run —
+   objects the player hasn't found yet in the new run showed up already
+   tagged.
+   - Root cause: the Telescope screen mounts once at app boot and its
+     `ui.identified` state lived only in `mountTelescopeScreen`'s closure,
+     never reset when the sim reinitializes for a new scenario.
+   - Status: fixed — added `reset()` to `TelescopeScreenHandle`
+     (`src/ui/telescope/index.ts`), called from `src/main.ts` on the sim's
+     `ready` event (mirrors the existing `measurements.clear()` on `ready`).
+
+5. **Telescope: identified-objects list had no scroll and was too narrow.**
+   A long list of identified objects had no independent scrollbar and grew
+   to push other sidebar sections out of view; long star names got cramped.
+   - Root cause: `.telescope-sidebar` had `overflow-y: auto` but no
+     `min-height: 0` — the classic flex-item bug where a flex child won't
+     shrink below its content size, so overflow never actually kicked in.
+   - Status: fixed — `.telescope-sidebar` gets `min-height: 0` and widened
+     to 380px; `.telescope-id-list` now has its own `max-height: 260px` +
+     independent scroll so the separation tool/sensors below it stay
+     reachable; long names truncate with an ellipsis + `title` tooltip
+     instead of overflowing.
+
+6. **Ephemeris and Measurement Log promoted to first-level nav screens.**
+   Both were cards buried inside Data's 12-col grid, cramped for anything
+   with a long list (see screenshot — the ephemeris table got clipped with
+   no way to see the rest). Moved both out to their own nav entries below
+   Data.
+   - New `src/ui/ephemeris/` and `src/ui/measurementLog/` screen modules
+     (each a single full-width `data-card--span-12`, reusing Data's
+     card/table CSS). `src/ui/data/index.ts` now only owns
+     Radio/Ship/Burns/Time/Inserted-state-analysis.
+   - Measurement Log renders the same shared `MeasurementMirror` instance
+     from `main.ts` (no more separate private mirror inside Data).
+   - Extracted the `card()` helper to `src/ui/dataCard.ts` since 3 modules
+     now build the same panel markup.

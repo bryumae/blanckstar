@@ -1,7 +1,10 @@
-// Data screen mount (src/ui/data/index.ts, mvp0_spec.md §7, §7.2-7.5, §7.8,
+// Data screen mount (src/ui/data/index.ts, mvp0_spec.md §7, §7.2-7.3, §7.8,
 // §7 inserted-state, §12 AC6/AC7/AC8). happy-dom; sim worker is faked via a
 // captured listener + a send() spy, matching the injected postMessage seam
-// pattern from ADR-0001.
+// pattern from ADR-0001. Ephemeris query and measurement log now live in
+// their own screens (tests/unit/ui/ephemerisScreen.test.ts,
+// measurementLogScreen.test.ts) — this file covers what's left in Data:
+// radio, ship data, scheduled burns, time controls, inserted-state analysis.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mountDataScreen, type DataScreenHandle } from '../../../src/ui/data/index';
 import type { SimCommand, SimEvent } from '../../../src/sim/messages';
@@ -93,7 +96,6 @@ interface Harness {
   emit(e: SimEvent): void;
   candidates: CandidateStore;
   ephemeris: EphemerisData;
-  exportedText: { filename: string; text: string }[];
 }
 
 function setup(overrides: Partial<Parameters<typeof mountDataScreen>[1]> = {}): Harness {
@@ -103,7 +105,6 @@ function setup(overrides: Partial<Parameters<typeof mountDataScreen>[1]> = {}): 
   const listeners = new Set<(e: SimEvent) => void>();
   const ephemeris = buildEphemeris();
   const candidates = createCandidateStore(new FakeStorage());
-  const exportedText: { filename: string; text: string }[] = [];
 
   const handle = mountDataScreen(root, {
     ephemeris,
@@ -111,7 +112,6 @@ function setup(overrides: Partial<Parameters<typeof mountDataScreen>[1]> = {}): 
     addSimListener: (cb) => listeners.add(cb),
     removeSimListener: (cb) => listeners.delete(cb),
     candidates,
-    exportText: (filename, text) => exportedText.push({ filename, text }),
     ...overrides,
   });
 
@@ -122,7 +122,6 @@ function setup(overrides: Partial<Parameters<typeof mountDataScreen>[1]> = {}): 
     emit: (e) => listeners.forEach((cb) => cb(e)),
     candidates,
     ephemeris,
-    exportedText,
   };
 }
 
@@ -132,15 +131,16 @@ describe('mountDataScreen', () => {
     h = setup();
   });
 
-  it('renders all seven module cards', () => {
+  it('renders the five remaining module cards', () => {
     const titles = [...h.root.querySelectorAll('.data-card-title')].map((el) => el.textContent);
     expect(titles.some((t) => t?.includes('RADIO'))).toBe(true);
     expect(titles.some((t) => t?.includes('SHIP DATA'))).toBe(true);
     expect(titles.some((t) => t?.includes('SCHEDULED BURNS'))).toBe(true);
     expect(titles.some((t) => t?.includes('TIME CONTROLS'))).toBe(true);
-    expect(titles.some((t) => t?.includes('EPHEMERIS'))).toBe(true);
-    expect(titles.some((t) => t?.includes('MEASUREMENT LOG'))).toBe(true);
     expect(titles.some((t) => t?.includes('INSERTED-STATE'))).toBe(true);
+    // Ephemeris and Measurement Log are now their own first-level screens.
+    expect(titles.some((t) => t?.includes('EPHEMERIS'))).toBe(false);
+    expect(titles.some((t) => t?.includes('MEASUREMENT LOG'))).toBe(false);
   });
 
   it('radio lock button sends radioLockEarth; measurementAdded round-trips to the display', () => {
@@ -207,68 +207,6 @@ describe('mountDataScreen', () => {
     expect(h.root.textContent).toMatch(/BURNING/);
     h.emit({ type: 'burnEnded', endTime: T0 + 30, deltaVSpent: 15 });
     expect(h.root.querySelector('.data-burn-card')).toBeNull();
-  });
-
-  it('measurement log append + note + export text content', () => {
-    h.emit({
-      type: 'measurementAdded',
-      measurement: {
-        id: 5,
-        simTime: T0 + 50,
-        data: { kind: 'sunDirection', direction: { x: 1, y: 0, z: 0 } },
-      },
-    });
-    const noteInput = h.root.querySelector('.data-log-note-input') as HTMLInputElement;
-    noteInput.value = 'first fix';
-    noteInput.dispatchEvent(new Event('change'));
-    expect(h.sent).toContainEqual({ type: 'annotateMeasurement', id: 5, note: 'first fix' });
-
-    const exportBtn = [...h.root.querySelectorAll('button')].find((b) => b.textContent?.includes('export'))!;
-    exportBtn.click();
-    expect(h.exportedText.length).toBe(1);
-    expect(h.exportedText[0]!.text).toMatch(/sunDirection/);
-    expect(h.exportedText[0]!.text).toMatch(/first fix/);
-  });
-
-  it('measurement log clears on ready event', () => {
-    h.emit({
-      type: 'measurementAdded',
-      measurement: { id: 1, simTime: T0, data: { kind: 'sunDirection', direction: { x: 1, y: 0, z: 0 } } },
-    });
-    expect(h.root.querySelectorAll('.data-table tbody tr').length).toBeGreaterThan(0);
-    h.emit({ type: 'ready', seedId: 'seed-1', epoch: T0 });
-    const logTable = h.root.querySelectorAll('.data-card')[5]!.querySelectorAll('tbody tr');
-    expect(logTable.length).toBe(0);
-  });
-
-  it('ephemeris query matches core interpolation for Earth at t0', () => {
-    const bodySelect = h.root.querySelector('select') as HTMLSelectElement; // first select = body query
-    bodySelect.value = 'earth';
-    const dateInput = h.root.querySelector('input[type="datetime-local"]') as HTMLInputElement;
-    dateInput.value = toLocalDatetimeInputValue(T0);
-    const queryBtn = [...h.root.querySelectorAll('button')].find((b) => b.textContent === 'Query')!;
-    queryBtn.click();
-    const result = h.root.querySelector('.data-query-result')!;
-    // Earth at T0 is at (AU, 0, 0) per the synthetic ephemeris -> x ~ AU/1000 km, y/z ~ 0.
-    expect(result.textContent).toMatch(/149597870/); // AU in km, integer part
-  });
-
-  it('ephemeris table shows all six bodies with |r| in AU', () => {
-    h.emit({
-      type: 'state',
-      simTime: T0,
-      missionElapsed: 0,
-      warp: 0,
-      ship: makeShipState(),
-      bodies: { sun: { x: 0, y: 0, z: 0 }, earth: { x: AU, y: 0, z: 0 }, moon: { x: 0, y: 0, z: 0 }, mars: { x: 0, y: 0, z: 0 }, venus: { x: 0, y: 0, z: 0 }, jupiter: { x: 0, y: 0, z: 0 } },
-    });
-    const ephemCard = [...h.root.querySelectorAll('.data-card')].find((c) =>
-      c.querySelector('.data-card-title')?.textContent?.includes('EPHEMERIS'),
-    )!;
-    const rows = ephemCard.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(6);
-    const earthRow = [...rows].find((r) => r.textContent?.includes('Earth'))!;
-    expect(earthRow.textContent).toMatch(/1\.0000/); // Earth at 1 AU
   });
 
   it('ship data never shows position/velocity strings, shows self-knowledge fields', () => {

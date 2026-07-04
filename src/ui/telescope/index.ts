@@ -39,6 +39,10 @@ export interface TelescopeScreenDeps {
 export interface TelescopeScreenHandle {
   /** Call from the host render loop; renders one frame and re-derives body/star picking data. */
   renderFrame(): void;
+  /** Clear identified objects and the separation-tool selection — call when a
+   * new scenario starts, so a fresh run doesn't inherit the previous run's
+   * identified-objects list. */
+  reset(): void;
   destroy(): void;
 }
 
@@ -108,6 +112,13 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
   labelLayer.style.inset = '0';
   labelLayer.style.pointerEvents = 'none';
   viewportEl.appendChild(labelLayer);
+
+  const sidebarToggle = document.createElement('button');
+  sidebarToggle.type = 'button';
+  sidebarToggle.className = 'telescope-sidebar-toggle';
+  sidebarToggle.textContent = '›';
+  sidebarToggle.setAttribute('aria-label', 'Toggle sidebar panel');
+  viewportEl.appendChild(sidebarToggle);
 
   // ---- sidebar ----
   const sidebar = document.createElement('aside');
@@ -189,6 +200,12 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
 
   root.append(viewportEl, sidebar);
 
+  sidebarToggle.addEventListener('click', () => {
+    const collapsed = sidebar.classList.toggle('is-collapsed');
+    sidebarToggle.classList.toggle('is-collapsed', collapsed);
+    sidebarToggle.textContent = collapsed ? '‹' : '›';
+  });
+
   // ---- viewport + state ----
   const viewport: TelescopeViewport = createTelescopeViewport(canvas, deps.ephemeris, deps.starCatalog);
   let ui: TelescopeUiState = createInitialState();
@@ -230,6 +247,7 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
         const name = document.createElement('span');
         name.className = 'telescope-id-name';
         name.textContent = obj.name ?? obj.id;
+        name.title = obj.name ?? obj.id;
         const kind = document.createElement('span');
         kind.className = 'telescope-id-kind';
         kind.textContent = obj.kind === 'star' ? 'STAR' : 'BODY';
@@ -432,6 +450,10 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
       viewport.updateFrame(latestFrame);
       viewport.render();
       updateSensors();
+    },
+    reset(): void {
+      ui = createInitialState();
+      render();
     },
     destroy(): void {
       resizeObserver.disconnect();

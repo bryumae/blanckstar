@@ -21,6 +21,11 @@ body {
     'header header'
     'rail   content';
   overflow: hidden;
+  transition: grid-template-columns 0.16s ease;
+}
+
+#app-shell.is-rail-collapsed {
+  grid-template-columns: 0 1fr;
 }
 
 /* ---- header ---- */
@@ -31,6 +36,25 @@ body {
   align-items: stretch;
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-panel-header);
+}
+
+.shell-rail-toggle {
+  width: 40px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-primary);
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.shell-rail-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-active);
 }
 
 .shell-brand {
@@ -205,6 +229,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .shell-rail-heading {

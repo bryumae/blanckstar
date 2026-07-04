@@ -8,6 +8,8 @@ import { mountTelescopeScreen } from './ui/telescope';
 import { mountSequenceScreen } from './ui/sequence';
 import type { ConsoleSink } from './ui/sequence';
 import { mountDataScreen } from './ui/data';
+import { mountEphemerisScreen } from './ui/ephemeris';
+import { mountMeasurementLogScreen } from './ui/measurementLog';
 import { createSequenceTabs } from './ui/sequence/tabs';
 import { createCandidateStore } from './ui/candidateStore';
 import { createMeasurementMirror } from './ui/data/measurementMirror';
@@ -61,9 +63,13 @@ async function main(): Promise<void> {
   // ---- shared UI stores ----
   const candidates = createCandidateStore(localStorage);
   const measurements = createMeasurementMirror();
+  let simEpoch = 0;
   addSimListener((e) => {
     if (e.type === 'measurementAdded') measurements.add(e.measurement);
-    else if (e.type === 'ready') measurements.clear();
+    else if (e.type === 'ready') {
+      measurements.clear();
+      simEpoch = e.epoch;
+    }
   });
 
   // ---- app shell ----
@@ -108,6 +114,9 @@ async function main(): Promise<void> {
     instruments,
     getFrameState,
   });
+  addSimListener((e) => {
+    if (e.type === 'ready') telescopeHandle.reset();
+  });
   const loop = (): void => {
     if (telescopeRenderingEnabled && latestState) telescopeHandle.renderFrame();
     requestAnimationFrame(loop);
@@ -121,6 +130,20 @@ async function main(): Promise<void> {
     addSimListener,
     removeSimListener,
     candidates,
+  });
+
+  // ---- ephemeris screen ----
+  mountEphemerisScreen(shell.screenRoot('ephemeris'), {
+    ephemeris,
+    addSimListener,
+    removeSimListener,
+  });
+
+  // ---- measurement log screen ----
+  mountMeasurementLogScreen(shell.screenRoot('measurementLog'), {
+    mirror: measurements,
+    send: post,
+    simEpoch: () => simEpoch,
   });
 
   // ---- sandbox bridge + sequence screen ----

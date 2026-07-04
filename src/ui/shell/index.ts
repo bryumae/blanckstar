@@ -11,12 +11,14 @@ import { WARP_FACTORS } from '../../sim/types';
 import { fmtUtcClock, fmtMet, fmtKm, fmtKmPerS, fmtDegrees, fmtDuration } from './format';
 import './shell.css';
 
-export type ScreenId = 'telescope' | 'sequence' | 'data';
+export type ScreenId = 'telescope' | 'sequence' | 'data' | 'ephemeris' | 'measurementLog';
 
 const SCREENS: readonly { id: ScreenId; label: string; sub: string; icon: string }[] = [
   { id: 'telescope', label: 'Telescope', sub: 'Outside view · identify · measure', icon: '◎' },
   { id: 'sequence', label: 'Sequence & Calc', sub: 'Scripts · calculator · predictor', icon: '▸' },
-  { id: 'data', label: 'Data', sub: 'Radio · ship · burns · time · log', icon: '▤' },
+  { id: 'data', label: 'Data', sub: 'Radio · ship · burns · time', icon: '▤' },
+  { id: 'ephemeris', label: 'Ephemeris', sub: 'Heliocentric state query', icon: '⊙' },
+  { id: 'measurementLog', label: 'Measurement Log', sub: 'Append-only · this run', icon: '▥' },
 ];
 
 const WARP_LABELS: Readonly<Record<WarpFactor, string>> = {
@@ -62,6 +64,12 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
   // ---- header ----
   const header = document.createElement('header');
   header.className = 'shell-header';
+
+  const railToggle = document.createElement('button');
+  railToggle.type = 'button';
+  railToggle.className = 'shell-rail-toggle';
+  railToggle.textContent = '☰';
+  railToggle.setAttribute('aria-label', 'Toggle navigation panel');
 
   const brand = document.createElement('div');
   brand.className = 'shell-brand';
@@ -131,7 +139,11 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
   scenarioBadge.append(scenarioTag, scenarioTitle);
 
   status.append(beacon, scenarioBadge);
-  header.append(brand, clocks, warp, status);
+  header.append(railToggle, brand, clocks, warp, status);
+
+  railToggle.addEventListener('click', () => {
+    app.classList.toggle('is-rail-collapsed');
+  });
 
   // ---- nav rail ----
   const rail = document.createElement('nav');
