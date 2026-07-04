@@ -1,8 +1,20 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // End-to-end regression coverage for the app shell + three primary screens
 // (mvp0_spec.md §7, §12 AC1). Selectors favor role/text over CSS classes per
 // the phase-9 boundary note so screen-internal restyling doesn't break these.
+
+// Boot into a playable mission: pick a scenario, start, and — critically — wait
+// for the picker modal to actually detach before returning. Screen content is
+// mounted behind the modal, so a `toBeVisible()` check can pass while the modal
+// still overlays and intercepts clicks; interacting before it's gone races on
+// slow CI (headless Firefox), which is why callers must wait here, not just
+// assume the app is instantly interactive.
+async function startMission(page: Page, name: RegExp): Promise<void> {
+  await page.getByRole('button', { name }).click();
+  await page.getByRole('button', { name: 'Start mission' }).click();
+  await expect(page.getByText('SELECT SCENARIO')).toHaveCount(0);
+}
 
 test('boots to the scenario picker and starts a mission', async ({ page }) => {
   await page.goto('/');
@@ -11,10 +23,8 @@ test('boots to the scenario picker and starts a mission', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Close call/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Long way home/ })).toBeVisible();
 
-  await page.getByRole('button', { name: /Close call/ }).click();
-  await page.getByRole('button', { name: 'Start mission' }).click();
+  await startMission(page, /Close call/);
 
-  await expect(page.getByText('SELECT SCENARIO')).toHaveCount(0);
   await expect(page.getByText('SCENARIO', { exact: true })).toBeVisible();
   await expect(page.getByText('CLOSE CALL', { exact: true })).toBeVisible();
 
@@ -24,8 +34,7 @@ test('boots to the scenario picker and starts a mission', async ({ page }) => {
 
 test('nav rail switches between all three primary screens', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Close call/ }).click();
-  await page.getByRole('button', { name: 'Start mission' }).click();
+  await startMission(page, /Close call/);
 
   // Telescope is the default screen.
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeVisible();
@@ -46,8 +55,7 @@ test('nav rail switches between all three primary screens', async ({ page }) => 
 
 test('running the default script prints console output', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Close call/ }).click();
-  await page.getByRole('button', { name: 'Start mission' }).click();
+  await startMission(page, /Close call/);
   await page.getByRole('button', { name: /Sequence & Calc/ }).click();
 
   await page.getByRole('button', { name: '▸ Run' }).click();
@@ -57,8 +65,7 @@ test('running the default script prints console output', async ({ page }) => {
 
 test('Data screen radio lock button fills in the lock card', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Close call/ }).click();
-  await page.getByRole('button', { name: 'Start mission' }).click();
+  await startMission(page, /Close call/);
   await page.getByRole('button', { name: /^▤ Data/ }).click();
 
   await expect(page.getByText('NO LOCK YET')).toBeVisible();
