@@ -1,0 +1,486 @@
+/* App shell (header / nav rail / content grid) — mvp0_spec.md §7 intro,
+ * docs/design/mission-interface-template.html header+nav markup. This file
+ * owns global page chrome only; each screen keeps its own stylesheet. */
+@import '../styles.css';
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+
+#app-shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  grid-template-columns: 220px 1fr;
+  grid-template-areas:
+    'header header'
+    'rail   content';
+  overflow: hidden;
+}
+
+/* ---- header ---- */
+
+.shell-header {
+  grid-area: header;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-panel-header);
+}
+
+.shell-brand {
+  width: 220px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 16px;
+  border-right: 1px solid var(--border-primary);
+}
+
+.shell-brand-name {
+  font-size: var(--fs-heading);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.shell-brand-sub {
+  font-size: 9px;
+  letter-spacing: 0.17em;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.shell-clocks {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 0 20px;
+  border-right: 1px solid var(--border-primary);
+}
+
+.shell-clock-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.shell-clock-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-hero);
+  font-weight: 500;
+  margin-top: 2px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.shell-clock-value.is-met {
+  color: var(--accent);
+}
+
+.shell-warp {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  border-right: 1px solid var(--border-primary);
+}
+
+.shell-warp-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.shell-warp-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-body);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-control);
+  padding: 2px;
+}
+
+.shell-warp-btn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  padding: 5px 9px;
+}
+
+.shell-warp-btn.is-active {
+  background: var(--bg-active);
+  color: var(--accent);
+}
+
+.shell-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+}
+
+.shell-beacon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+}
+
+.shell-beacon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.shell-beacon-dot.is-locked {
+  background: var(--status-ok);
+  animation: shell-pulse 2.4s infinite;
+}
+
+.shell-beacon-state {
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.shell-beacon-state.is-locked {
+  color: var(--status-ok);
+}
+
+.shell-scenario-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+}
+
+.shell-scenario-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.shell-scenario-title {
+  font-size: var(--fs-body);
+  color: var(--status-warn);
+  font-weight: 600;
+}
+
+@keyframes shell-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(87, 201, 138, 0.5);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 4px rgba(87, 201, 138, 0);
+  }
+}
+
+/* ---- nav rail ---- */
+
+.shell-rail {
+  grid-area: rail;
+  border-right: 1px solid var(--border-primary);
+  background: var(--bg-panel-header);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.shell-rail-heading {
+  padding: 14px 12px 8px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.shell-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.shell-nav-btn.is-active {
+  background: var(--bg-active);
+}
+
+.shell-nav-icon {
+  width: 20px;
+  flex: 0 0 auto;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.shell-nav-btn.is-active .shell-nav-icon {
+  color: var(--accent);
+}
+
+.shell-nav-text {
+  flex: 1 1 auto;
+}
+
+.shell-nav-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.shell-nav-sub {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.shell-nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.shell-nav-btn.is-active .shell-nav-dot {
+  background: var(--accent);
+}
+
+.shell-vitals {
+  margin-top: auto;
+  border-top: 1px solid var(--border-primary);
+  padding: 12px 14px;
+}
+
+.shell-vitals-heading {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.shell-vital-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 7px;
+}
+
+.shell-vital-key {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.shell-vital-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+
+/* ---- content area ---- */
+
+.shell-content {
+  grid-area: content;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Screen-specific stylesheets (telescope.css/sequence.css/data.css) each set
+ * their own `display` on their root class (flex/grid) — since every screen
+ * stays mounted and those stylesheets can load in any order relative to this
+ * one, `.shell-screen:not(.is-active)` must win regardless of import order.
+ * A single class-selector `display: none` isn't specific enough to beat a
+ * same-specificity `display: grid` declared later. */
+.shell-screen {
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.shell-screen:not(.is-active) {
+  display: none !important;
+}
+
+/* ---- scenario picker overlay ---- */
+
+.shell-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 11, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  backdrop-filter: blur(3px);
+}
+
+.shell-overlay-panel {
+  background: var(--bg-panel-header);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: 28px;
+  max-width: 720px;
+  width: 90%;
+}
+
+.shell-overlay-title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.shell-overlay-subtitle {
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+  margin-bottom: 22px;
+}
+
+.shell-seed-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.shell-seed-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-panel);
+  padding: 16px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.shell-seed-card.is-selected {
+  border-color: var(--accent);
+  background: var(--bg-active);
+}
+
+.shell-seed-title {
+  font-size: var(--fs-heading);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.shell-seed-desc {
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.shell-overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.shell-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+
+.shell-btn.is-primary {
+  background: #123a2c;
+  color: var(--status-ok-bright);
+  border-color: #1f5c44;
+}
+
+.shell-btn.is-danger {
+  background: transparent;
+  color: var(--status-danger);
+  border-color: #4a2a2a;
+}
+
+/* ---- result / failure overlay ---- */
+
+.shell-result-panel {
+  max-width: 560px;
+}
+
+.shell-result-headline {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+.shell-result-headline.is-win {
+  color: var(--status-ok-bright);
+}
+
+.shell-result-headline.is-lose {
+  color: var(--status-danger);
+}
+
+.shell-result-reason {
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+  margin-bottom: 18px;
+}
+
+.shell-result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 20px;
+  margin-bottom: 22px;
+  background: var(--bg-viewport);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: 14px 16px;
+}
+
+.shell-result-stat-row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-row);
+  padding-bottom: 7px;
+}
+
+.shell-result-stat-key {
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+}
+
+.shell-result-stat-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
