@@ -51,7 +51,7 @@
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-control);
   padding: var(--pad-control) 9px;
-  font-size: var(--fs-heading);
+  font-size: 12px;
   font-family: var(--font-mono);
 }
 
@@ -69,7 +69,7 @@
 .calc-row .vec-label {
   width: 16px;
   font-family: var(--font-mono);
-  font-size: var(--fs-heading);
+  font-size: 12px;
 }
 
 .calc-row .vec-label.a {
@@ -108,22 +108,13 @@
   word-break: break-all;
 }
 
-.calc-deg-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: var(--fs-body);
-  color: var(--text-tertiary);
-}
-
 .calc-const-row {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px solid var(--border-row);
   font-family: var(--font-mono);
-  font-size: var(--fs-heading);
+  font-size: 12px;
 }
 
 .calc-const-row .k {
@@ -182,9 +173,19 @@
   text-align: left;
 }
 
-.cand-tab tbody td,
-.pred-tab tbody td {
+.cand-tab tbody td {
   padding: 11px 16px;
+  border-top: 1px solid var(--border-row);
+}
+
+/* The search-results table (Candidates tab) and the trajectory-prediction
+ * table (Predictor tab) are dense, many-row tables in the design — 8px
+ * vertical padding vs the roomier 11px on the (short) saved-candidates
+ * list — see mission-interface-template.html's CANDIDATES/PREDICTOR
+ * sections. */
+.cand-tab table.dense tbody td,
+.pred-tab tbody td {
+  padding: 8px 16px;
   border-top: 1px solid var(--border-row);
 }
 

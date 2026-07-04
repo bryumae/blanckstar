@@ -108,6 +108,21 @@ describe('mountSequenceScreen', () => {
     expect(controller.stops).toBe(1);
   });
 
+  it('console output is closed by default, opens on Run, and closes on the close button', () => {
+    const controller = fakeController();
+    mountSequenceScreen(root, {
+      storage: new FakeStorage(),
+      console: controller,
+      bindConsole: () => {},
+    });
+    const outCol = root.querySelector('.script-console-out')!;
+    expect(outCol.classList.contains('is-open')).toBe(false);
+    (root.querySelector('.script-btn.run') as HTMLButtonElement).click();
+    expect(outCol.classList.contains('is-open')).toBe(true);
+    (root.querySelector('.script-console-close') as HTMLButtonElement).click();
+    expect(outCol.classList.contains('is-open')).toBe(false);
+  });
+
   it('the bound console sink appends lines and reflects running/error state', () => {
     let sink: ConsoleSink | null = null;
     mountSequenceScreen(root, {
@@ -136,13 +151,14 @@ describe('mountSequenceScreen', () => {
   it('creating and deleting scripts updates the list and persists', () => {
     const storage = new FakeStorage();
     mountSequenceScreen(root, { storage, console: fakeController(), bindConsole: () => {} });
+    const before = root.querySelectorAll('.script-list-item').length;
     const newBtn = root.querySelector('.script-list-header .del') as HTMLButtonElement;
     newBtn.click();
-    expect(root.querySelectorAll('.script-list-item').length).toBe(2);
-    // Delete the second.
+    expect(root.querySelectorAll('.script-list-item').length).toBe(before + 1);
+    // Delete the last one added.
     const delBtns = root.querySelectorAll('.script-list-item .del');
     (delBtns[delBtns.length - 1] as HTMLButtonElement).click();
-    expect(root.querySelectorAll('.script-list-item').length).toBe(1);
+    expect(root.querySelectorAll('.script-list-item').length).toBe(before);
   });
 
   it('editing the name and source persists through storage', () => {

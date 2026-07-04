@@ -49,14 +49,21 @@
   display: flex;
 }
 
+/* Tab content stylesheets (tabs.css's .calc-tab/.cand-tab/.pred-tab, and
+ * .script-console below) each set their own `display` on the panel's root
+ * class — since those can load in any order relative to this file,
+ * `.sequence-panel:not(.is-active)` must win regardless of import order (same
+ * fix as `.shell-screen:not(.is-active)` in shell.css). A single
+ * class-selector `display: none` isn't specific enough to beat a
+ * same-specificity `display: flex/grid` declared later. */
 .sequence-panel {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
-  display: none;
 }
 
-.sequence-panel.is-active {
-  display: flex;
+.sequence-panel:not(.is-active) {
+  display: none !important;
 }
 
 .sequence-placeholder {
@@ -270,12 +277,19 @@
 }
 
 /* console output column */
+/* Closed by default so the editor gets the full width — opens when Run is
+ * pressed, or stays closed until the player wants it (repo issue: console
+ * output should not eat into code editing space unless actually running). */
 .script-console-out {
-  flex: 1 1 45%;
-  display: flex;
+  display: none;
   flex-direction: column;
   min-width: 0;
   background: var(--bg-viewport);
+}
+
+.script-console-out.is-open {
+  display: flex;
+  flex: 1 1 45%;
 }
 
 .script-console-header {
@@ -295,10 +309,38 @@
   font-weight: 600;
 }
 
+.script-console-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .script-console-status {
   font-size: 10px;
   font-family: var(--font-mono);
   color: var(--text-muted);
+}
+
+.script-console-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.script-console-close:hover {
+  color: var(--status-danger);
+  border-color: var(--status-danger);
+  background: var(--bg-active);
 }
 
 .script-console-status.is-running {
@@ -336,6 +378,8 @@
 
 .script-console-line .text {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
   color: #c9d4e2;
 }
 

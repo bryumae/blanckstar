@@ -54,7 +54,7 @@ const MEASUREMENT_LABELS: Readonly<Record<Measurement['data']['kind'], string>> 
 };
 
 export function mountCandidatesTab(root: HTMLElement, deps: CandidatesTabDeps): void {
-  root.className = 'cand-tab';
+  root.classList.add('cand-tab');
 
   const bodyPositionAt: BodyPositionAt = (body: BodyId, t: number) => positionAt(deps.ephemeris, body, t);
 
@@ -389,6 +389,7 @@ export function mountCandidatesTab(root: HTMLElement, deps: CandidatesTabDeps): 
       return;
     }
     const table = document.createElement('table');
+    table.className = 'dense';
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     headRow.innerHTML = '<th>#</th><th>X (km)</th><th>Y (km)</th><th>Z (km)</th>';

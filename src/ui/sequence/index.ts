@@ -201,7 +201,14 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     const statusEl = document.createElement('span');
     statusEl.className = 'script-console-status';
     statusEl.textContent = 'idle';
-    outHeader.append(outLabel, statusEl);
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'script-console-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'Close console output';
+    const headerRight = document.createElement('div');
+    headerRight.className = 'script-console-header-right';
+    headerRight.append(statusEl, closeBtn);
+    outHeader.append(outLabel, headerRight);
     const linesEl = document.createElement('div');
     linesEl.className = 'script-console-lines';
     const idleEl = document.createElement('div');
@@ -289,8 +296,12 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
     // ---- run / stop ----
     runBtn.addEventListener('click', () => {
+      outCol.classList.add('is-open');
       sink.clear();
       deps.console.run(textarea.value);
+    });
+    closeBtn.addEventListener('click', () => {
+      outCol.classList.remove('is-open');
     });
     stopBtn.addEventListener('click', () => {
       deps.console.stop();

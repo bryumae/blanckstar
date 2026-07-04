@@ -78,23 +78,19 @@ describe('mountCalculatorTab', () => {
     expect(result.textContent).toContain('5');
   });
 
-  it('degree toggle converts an angleBetween result to degrees', () => {
+  it('angleBetween result is displayed in radians', () => {
     mountCalculatorTab(r);
     const select = r.querySelector('select')!;
     select.value = 'angleBetween';
     select.dispatchEvent(new Event('change'));
     const inputs = r.querySelectorAll<HTMLInputElement>('.calc-input');
-    // A = (1,0,0), B = (0,1,0) -> 90 degrees.
+    // A = (1,0,0), B = (0,1,0) -> pi/2 radians.
     inputs[0]!.value = '1';
     inputs[0]!.dispatchEvent(new Event('input'));
     inputs[4]!.value = '1'; // B.y
     inputs[4]!.dispatchEvent(new Event('input'));
-    const toggle = r.querySelector<HTMLInputElement>('.calc-deg-toggle input')!;
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
     const result = r.querySelector('.calc-result-value')!;
-    expect(result.textContent).toContain('90');
-    expect(result.textContent).toContain('°');
+    expect(result.textContent).toContain((Math.PI / 2).toPrecision(8));
   });
 });
 

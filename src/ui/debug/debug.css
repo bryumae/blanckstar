@@ -145,7 +145,6 @@
   font-family: var(--font-mono);
   font-size: 10px;
   width: 100%;
-  box-sizing: border-box;
 }
 
 .debug-teleport-submit {

@@ -9,6 +9,17 @@
  * which already pulls this in transitively) — re-sync from
  * docs/design/tokens.css if the design changes.
  */
+/* Without this, every element with both `width: 100%` and `padding` (inputs,
+ * selects, buttons throughout src/ui/) renders wider/taller than its box —
+ * padding and border add on top of the specified width instead of eating
+ * into it. This is the single most common cause of "why is this element too
+ * big" across screens; fix it once, globally, instead of per-selector. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   /* Fonts — IBM Plex, loaded locally (no network during gameplay) */
   --font-ui: 'IBM Plex Sans', system-ui, sans-serif;

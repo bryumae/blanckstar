@@ -14,11 +14,14 @@ class FakeStorage implements StorageLike {
 }
 
 describe('ScriptStore', () => {
-  it('seeds a starter script on first use', () => {
+  it('seeds a starter script plus an API-reference script on first use', () => {
     const store = new ScriptStore(new FakeStorage());
-    expect(store.list().length).toBe(1);
+    expect(store.list().length).toBe(2);
     expect(store.getOpenId()).toBe(store.list()[0]!.id);
     expect(store.list()[0]!.source).toMatch(/radio\.lockEarth/);
+    expect(store.list()[1]!.name).toBe('api-reference.js');
+    expect(store.list()[1]!.source).toMatch(/Scripting API reference/);
+    expect(store.list()[1]!.source).toMatch(/radio\.lockEarth/);
   });
 
   it('round-trips scripts + last-open through storage', () => {
@@ -30,7 +33,7 @@ describe('ScriptStore', () => {
     a.setOpen(created.id);
 
     const b = new ScriptStore(storage);
-    expect(b.list().length).toBe(2);
+    expect(b.list().length).toBe(3);
     const reloaded = b.get(created.id)!;
     expect(reloaded.name).toBe('burn_plan.js');
     expect(reloaded.source).toBe('log(42)');
@@ -49,20 +52,21 @@ describe('ScriptStore', () => {
 
   it('delete falls the open selection to a neighbor', () => {
     const store = new ScriptStore(new FakeStorage());
-    const first = store.list()[0]!;
-    const second = store.create();
-    store.setOpen(second.id);
-    store.delete(second.id);
-    expect(store.list().some((s) => s.id === second.id)).toBe(false);
-    expect(store.getOpenId()).toBe(first.id);
+    const created = store.create();
+    const neighbor = store.list()[store.list().length - 2]!;
+    store.setOpen(created.id);
+    store.delete(created.id);
+    expect(store.list().some((s) => s.id === created.id)).toBe(false);
+    expect(store.getOpenId()).toBe(neighbor.id);
   });
 
-  it('deleting the last script reseeds a fresh starter', () => {
+  it('deleting every script reseeds a fresh starter', () => {
     const store = new ScriptStore(new FakeStorage());
-    const only = store.list()[0]!;
-    store.delete(only.id);
+    const ids = store.list().map((s) => s.id);
+    for (const id of ids) store.delete(id);
     expect(store.list().length).toBe(1);
-    expect(store.list()[0]!.id).not.toBe(only.id);
+    expect(ids).not.toContain(store.list()[0]!.id);
+    expect(store.getOpenId()).toBe(store.list()[0]!.id);
   });
 
   it('ignores mutations to unknown ids', () => {

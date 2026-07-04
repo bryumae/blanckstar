@@ -4,7 +4,7 @@
 // ./calculator.ts; this module is DOM wiring only.
 import type { Vector3 } from '../../../core/vector3';
 import { C, MU_SUN, MU_EARTH, MU_MOON, R_EARTH, R_MOON, R_SOI_EARTH, AU, SHIP_MASS_KG } from '../../../core/constants';
-import { CALC_OPERATIONS, calcOperationInfo, evaluateCalc, radToDeg, degToRad, type CalcOperation } from './calculator';
+import { CALC_OPERATIONS, calcOperationInfo, evaluateCalc, type CalcOperation } from './calculator';
 
 const CONSTANTS: readonly { readonly k: string; readonly v: string }[] = [
   { k: 'C', v: `${C.toExponential(3)} m/s` },
@@ -24,7 +24,7 @@ function parseNum(input: HTMLInputElement): number {
 }
 
 export function mountCalculatorTab(root: HTMLElement): void {
-  root.className = 'calc-tab';
+  root.classList.add('calc-tab');
 
   const left = document.createElement('div');
   left.className = 'panel';
@@ -94,15 +94,6 @@ export function mountCalculatorTab(root: HTMLElement): void {
   resultBox.append(resultLabel, resultValue);
   left.appendChild(resultBox);
 
-  const degToggleWrap = document.createElement('label');
-  degToggleWrap.className = 'calc-deg-toggle';
-  const degToggle = document.createElement('input');
-  degToggle.type = 'checkbox';
-  const degToggleText = document.createElement('span');
-  degToggleText.textContent = 'display angles in degrees';
-  degToggleWrap.append(degToggle, degToggleText);
-  left.appendChild(degToggleWrap);
-
   const right = document.createElement('div');
   right.className = 'panel';
   const constTitle = document.createElement('div');
@@ -124,10 +115,6 @@ export function mountCalculatorTab(root: HTMLElement): void {
 
   root.append(left, right);
 
-  // Ops whose result is an angle in radians (so the deg/rad toggle applies).
-  const ANGLE_OPS = new Set<CalcOperation>(['angleBetween', 'asin', 'acos', 'atan2']);
-  const ANGLE_INPUT_OPS = new Set<CalcOperation>(['sin', 'cos', 'tan']);
-
   function readVec(inputs: readonly [HTMLInputElement, HTMLInputElement, HTMLInputElement]): Vector3 {
     return { x: parseNum(inputs[0]), y: parseNum(inputs[1]), z: parseNum(inputs[2]) };
   }
@@ -142,24 +129,18 @@ export function mountCalculatorTab(root: HTMLElement): void {
 
     const a = readVec(vecA.inputs);
     const b = readVec(vecB.inputs);
-    let scalar = parseNum(scalarInput);
-    if (ANGLE_INPUT_OPS.has(op) && degToggle.checked) {
-      scalar = degToRad(scalar);
-    }
+    const scalar = parseNum(scalarInput);
     const scalarB = parseNum(scalarBInput);
 
     const result = evaluateCalc(op, a, b, scalar, scalarB);
     if (result.kind === 'vector') {
       resultValue.textContent = `(${result.value.x.toPrecision(6)}, ${result.value.y.toPrecision(6)}, ${result.value.z.toPrecision(6)})`;
     } else {
-      const display = ANGLE_OPS.has(op) && degToggle.checked ? radToDeg(result.value) : result.value;
-      const suffix = ANGLE_OPS.has(op) && degToggle.checked ? '°' : '';
-      resultValue.textContent = `${display.toPrecision(8)}${suffix}`;
+      resultValue.textContent = result.value.toPrecision(8);
     }
   }
 
   opSelect.addEventListener('change', recompute);
-  degToggle.addEventListener('change', recompute);
   for (const inp of [...vecA.inputs, ...vecB.inputs, scalarInput, scalarBInput]) {
     inp.addEventListener('input', recompute);
   }

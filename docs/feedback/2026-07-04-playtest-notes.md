@@ -126,3 +126,68 @@ Running list of comments/problems found while manually testing the app
    which is deleted — same "advance simulation time" concern, one place).
    `src/ui/shell/index.ts`/`shell.css`; `src/ui/data/index.ts` no longer
    tracks `warp`/`skipFraction`/`interruptNote` at all.
+
+10. **Sequence & Calc tabs (Calculator/Candidates/Trajectory Predictor)
+    didn't switch — clicking a tab just underlined it, old content stayed
+    visible underneath.** Two compounding bugs:
+    - `mountCalculatorTab`/`mountCandidatesTab`/`mountPredictorTab` did
+      `root.className = 'calc-tab'` (etc.), which wiped out the
+      `sequence-panel`/`is-active` classes the tab bar had just set on that
+      same element. Fixed to `root.classList.add(...)`.
+    - Even with that fixed, `.script-console { display: flex }` in
+      `sequence.css` was declared *after* `.sequence-panel { display: none
+      }` with equal specificity, so it always won regardless of
+      `is-active` — the same stylesheet-import-order footgun already
+      solved for `.shell-screen` in shell.css. Fixed with the identical
+      `.sequence-panel:not(.is-active) { display: none !important; }`
+      pattern.
+
+11. **Design-alignment pass on Calculator/Candidates/Predictor tabs** (ref
+    `docs/design/mission-interface-template.html` — screenshots the user
+    attached were the actual design mockup, not our app, for comparison).
+    - Root cause of "everything looks too big": no global `box-sizing:
+      border-box` reset existed anywhere in `src/ui/styles.css`. Every
+      input/select with `width: 100%` plus padding was rendering wider/
+      taller than its box (padding+border added on top of the size instead
+      of eating into it) — affected every screen, not just these tabs.
+      Added the reset once, globally, and removed the two now-redundant
+      per-selector `box-sizing: border-box` declarations in data.css/
+      debug.css.
+    - Form inputs/selects across calc/cand/pred tabs were 13px
+      (`var(--fs-heading)`) vs the design's consistent 12px for form
+      controls — set to a literal 12px locally (didn't touch the shared
+      `--fs-heading` token, which other consumers still want at 13px).
+    - Trajectory-prediction table and Candidates' search-results table
+      were using the same roomy 11px row padding as the (short) saved-
+      candidates list; the design uses a denser 8px padding for these
+      long, many-row tables. Predictor's table padding tightened directly;
+      Candidates' search table gets a new `.dense` class distinguishing it
+      from the saved-candidates table.
+
+12. **Calculator: removed the "display angles in degrees" checkbox** — not
+    in the original design mockup at all. Angle-producing/consuming ops
+    (`angleBetween`, `asin`, `acos`, `atan2`, `sin`, `cos`, `tan`) now
+    always work in radians only; `radToDeg`/`degToRad` stay as tested pure
+    utils in `calculator.ts` but are no longer wired into the tab UI.
+
+13. **Script Console: added a second seeded script, `api-reference.js`,**
+    with the full text of README's "Scripting API" section transcribed as
+    comments (harmless if the player hits Run — just finishes immediately).
+    Seeded alongside `sequence.js` on first use so the reference is always
+    one click away without leaving the app. `src/ui/sequence/scriptStore.ts`.
+
+14. **Script Console: CONSOLE OUTPUT panel took half the width by default,
+    with no way to close it.** Now closed by default (editor gets full
+    width), opens automatically on Run, and has a close button.
+    - The close button was initially near-invisible (`--text-faint` on a
+      dark background) — fixed to a proper bordered chip.
+    - Real bug found during that fix: `.sequence-panel` (the tab-content
+      wrapper) had no `min-width: 0`. As a row-flex item its default
+      `min-width: auto` refused to shrink below its content's natural
+      width, so long unbroken JSON console output (no spaces to wrap on)
+      silently pushed the *entire panel* wider than the viewport — clipping
+      everything past the edge, including the close button — with no
+      scrollbar to hint at it (`document.scrollWidth` still read the
+      viewport width). Fixed with `min-width: 0` on `.sequence-panel` (same
+      pattern as the `.shell-screen` fix), plus `overflow-wrap: anywhere`
+      on `.script-console-line .text` as defense-in-depth.

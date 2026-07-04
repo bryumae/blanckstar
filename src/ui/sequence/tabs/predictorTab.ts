@@ -34,7 +34,7 @@ function field(labelText: string, placeholder = ''): { wrap: HTMLDivElement; inp
 }
 
 export function mountPredictorTab(root: HTMLElement, deps: PredictorTabDeps): void {
-  root.className = 'pred-tab';
+  root.classList.add('pred-tab');
 
   // ---- form panel ----
   const formPanel = document.createElement('div');
