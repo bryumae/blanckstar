@@ -6,7 +6,7 @@ Status: **agreed spec**, synthesized from `bryum_proposal.md` and `bvt-proposal.
 
 ## 1. Game Definition
 
-A browser-based, true-scale, no-map spacecraft navigation simulator. The player wakes aboard a ship in an unknown heliocentric orbit (wormhole return, main computer destroyed — narrative per bvt-proposal §5). The only working system is an emergency backup computer with a retro early-2000s-style interface exposing a rack of **instruments**, one of which is a **programmable script console**.
+A browser-based, true-scale, no-map spacecraft navigation simulator. The player wakes aboard a ship in an unknown heliocentric orbit (wormhole return, main computer destroyed — narrative per bvt-proposal §5). The only working system is an emergency backup computer with a modern mission interface organized into three primary screens: **Telescope**, **Sequence & Calculation**, and **Data**. One part of the Sequence & Calculation screen is a **programmable script console**.
 
 The player must determine position and velocity from measurements, plan burns, and achieve **temporary Earth capture**.
 
@@ -20,7 +20,7 @@ Central design rule: **the simulation knows the truth; the player must earn know
 
 ### Resolved: interaction model
 
-MVP0 is a **hybrid**: manual instruments (bryum) *plus* full scripting (bvt) as one instrument among them. The GUI panels and the script API read the same underlying instrument models — a range measured from the radio panel and one measured by `radio.earthRange()` are the same measurement, and both land in the measurement log.
+MVP0 is a **hybrid**: manual instruments (bryum) *plus* full scripting (bvt) as one instrument among them. The GUI screens and the script API read the same underlying instrument models — a range measured from the radio module and one measured by `radio.earthRange()` are the same measurement, and both land in the measurement log.
 
 ---
 
@@ -36,7 +36,7 @@ AND  v_rel²/2 − μ_earth/|r_rel| < 0     (negative Earth-relative specific en
 AND  altitude above Earth surface > 120 km
 ```
 
-A highly elliptical capture orbit is acceptable. No circularization, landing, or docking. The condition is checked every integrator step; on success, a success screen shows summary stats (elapsed mission time, Δv spent, final Earth-relative orbit parameters — revealing truth is fine once the game is over).
+A highly elliptical capture orbit is acceptable. No circularization, landing, or docking. The condition is checked every integrator step; on success, a result overlay shows summary stats (elapsed mission time, Δv spent, final Earth-relative orbit parameters — revealing truth is fine once the game is over).
 
 ### 2.2 Lose — atmospheric destruction
 
@@ -53,7 +53,7 @@ After failure: show failure reason, allow restart from the same seed or another 
 ```
 TypeScript + Vite
 Three.js                 — rendering only (starfield, outside/telescope view)
-HTML/CSS                 — all instrument panels (DOM, not canvas)
+HTML/CSS                 — all application screens and data modules (DOM, not canvas)
 Web Worker #1            — simulation (physics, clock, instruments)
 Web Worker #2            — player script sandbox
 localStorage             — scripts, notes, candidates, settings
@@ -74,7 +74,7 @@ Runs with `npm install && npm run dev`; builds with `npm run build`.
 ### 4.1 Units and frame
 
 **SI internally** (bvt): meters, seconds, kilograms, m/s, m/s², newtons, radians.
-**UI displays**: km, km/s, degrees, human dates (UTC). All panels label units explicitly.
+**UI displays**: km, km/s, degrees, human dates (UTC). All screens/modules label units explicitly.
 
 One inertial frame for everything: **heliocentric ecliptic J2000**. Sun at origin `(0,0,0)`, x/y plane = ecliptic, z perpendicular. All ephemeris data converted to this frame at generation time. All player-facing coordinates are in this frame.
 
@@ -141,7 +141,7 @@ attitude  : unit forward vector (see 5.3)
 mass      : constant, irrelevant to dynamics (accel is specified directly)
 ```
 
-Hidden from the player. Exposed only in debug mode.
+Position and velocity are hidden from the player and exposed only in debug mode. Mass is ship self-knowledge: a constant, scenario-configured display value used only to present ship specs and equivalent thrust in the Data screen.
 
 ### 5.2 Engine
 
@@ -149,11 +149,12 @@ Fictional high-thrust drive:
 
 - **max acceleration = 0.5 m/s²** (resolved between bryum's 2 and bvt's 0.01–0.1; per-scenario override allowed)
 - throttle ∈ [0, 1]; `a_engine = throttle × 0.5 m/s²`
+- equivalent max thrust is displayed as `massKg × maxAcceleration`; physics still uses acceleration directly
 - unlimited fuel, constant mass, no rocket equation (both proposals agree for MVP)
 - finite burns only — no impulsive Δv
 - **forward-only thrust**: the engine pushes along the ship's current forward vector
 
-Δv bookkeeping: `Δv = throttle × 0.5 × duration` — tracked and shown on ship status panel (cumulative Δv spent is allowed knowledge; it's the ship's own accelerometer).
+Δv bookkeeping: `Δv = throttle × 0.5 × duration` — tracked and shown in the ship data module (cumulative Δv spent is allowed knowledge; it's the ship's own accelerometer).
 
 ### 5.3 Attitude — point-then-burn
 
@@ -163,7 +164,7 @@ Fictional high-thrust drive:
 - In MVP0 reorientation is **instantaneous** (rotation rates, attitude dynamics, and quaternion state deferred to a later phase; the internal representation is just the forward vector).
 - `ship.burn(throttle, durationSeconds)` — thrust along current forward vector for the given duration.
 
-Burns may also be **scheduled**: `ship.scheduleBurn(startTime, direction, throttle, duration)` — executes during warp/skip without the script running. Scheduled burns appear in, and can be cancelled from, the ship status panel. This preserves bryum's declarative burn-plan workflow on top of the point/burn primitives.
+Burns may also be **scheduled**: `ship.scheduleBurn(startTime, direction, throttle, duration)` — executes during warp/skip without the script running. Scheduled burns appear in, and can be cancelled from, the ship data module. This preserves bryum's declarative burn-plan workflow on top of the point/burn primitives.
 
 No arbitrary-vector thrust without pointing; no RCS translation.
 
@@ -183,11 +184,17 @@ While a player script is running, sim time only advances through the script's `w
 
 ---
 
-## 7. Instruments
+## 7. User Interface and Instruments
 
-The UI is a diegetic retro-OS desktop (early-2000s style, fictional — **no real Windows XP assets, logos, or sounds**; to_do.md's "XP logo" is overruled by bvt §5's legal note). Each instrument is a window/panel. Boot screen and recovery-mode framing included but minimal.
+The UI is a modern mission-operations application. The normal game interface has exactly three primary screens; modules and tabs inside those screens are allowed when they keep the workflow clear. Do not use copied OS assets, logos, sounds, or interface chrome.
 
-Always-on instruments: **script console, radio panel, ephemeris panel, ship status, time controls**. Additionally in MVP0 scope (all confirmed in): **telescope, calculation workspace, trajectory predictor, measurement log**.
+Primary screens:
+
+1. **Telescope** — outside view and telescope workflow: starfield, bodies, zoom, identification, and angular separation measurements.
+2. **Sequence & Calculation** — sequence coding plus calculation space. It may use tabs for scripts, console output, calculator, candidate estimates, candidate-search tables, and trajectory prediction.
+3. **Data** — all remaining operational data: radio locks, Earth beacon status/light-time details, ephemeris queries, measurement log, ship information, scheduled burns, active script status, time controls, and entered-state analysis.
+
+The Data screen is also where the player analyzes any **inserted state**: a player-entered or selected candidate position+velocity+epoch. From that inserted state only, the game displays closest approach to Earth over a selected prediction horizon, an extension point for later closest-approach readouts to other planets, and Earth-relative orbital information such as apoapsis/apogee, periapsis/perigee, and inclination when those values are meaningful. These readouts must be clearly labeled as estimate-derived and must never use the hidden true ship state.
 
 ### 7.1 Outside view + telescope
 
@@ -203,7 +210,7 @@ One Three.js viewport with two modes:
 
 Stars are fixed on the sky (no parallax from ship motion). Catalog: filtered real bright-star set (~5,000 stars: RA, dec, magnitude, name where known), generated offline by `scripts/generateStarCatalog.ts`.
 
-### 7.2 Radio panel — Earth beacon
+### 7.2 Radio data — Earth beacon
 
 **Resolved: Level 1** (bvt §9.2) is the MVP0 behavior. On lock, the player gets:
 
@@ -220,7 +227,7 @@ Light-time is honest: range and direction correspond to **Earth's position at tr
 - `sensors.sunDirection()` — unit vector to the Sun, inertial frame, exact.
 - `sensors.starAttitude()` — ship attitude relative to the inertial frame (this is what justifies inertial-frame `ship.point()`).
 
-### 7.4 Ephemeris panel
+### 7.4 Ephemeris data
 
 Query any body's position (and velocity) at any time within data coverage; displayed as heliocentric ecliptic Cartesian km. Never shows ship state (bryum §9). Same data as `ephemeris.*` script API.
 
@@ -242,13 +249,13 @@ Forbidden everywhere (both proposals): hidden-position solver, route-to-Earth so
 
 ### 7.7 Trajectory predictor
 
-GUI panel and script API over the same engine. Inputs: **player-entered** position + velocity estimate (typically a saved candidate), optional burn list, prediction duration. Output: **tables only** — time series of predicted coordinates, distances to Earth/Moon/Mars, Earth-relative speed. Uses the exact same RK4 + gravity model + ephemeris as the simulation. No map, no plots (bryum §14: tables only in MVP0). It simulates consequences of the entered state; it never validates the state.
+Sequence & Calculation module and script API over the same engine. Inputs: **player-entered** position + velocity estimate (typically a saved candidate), optional burn list, prediction duration. Output: **tables only** — time series of predicted coordinates, distances to Earth/Moon/Mars, Earth-relative speed. Uses the exact same RK4 + gravity model + ephemeris as the simulation. No map, no plots (bryum §14: tables only in MVP0). It simulates consequences of the entered state; it never validates the state. The Data screen's inserted-state analysis may summarize this prediction output as closest approach and orbital elements.
 
-### 7.8 Ship status panel
+### 7.8 Ship data
 
-Shows only self-knowledge: current attitude (forward vector, inertial frame — the star tracker knows it), engine state, cumulative Δv spent, scheduled burns (with cancel), mission clock, active script status. **Never position or velocity.**
+Shows only self-knowledge: configured mass, max acceleration, equivalent max thrust, current attitude (forward vector, inertial frame — the star tracker knows it), engine state, cumulative Δv spent, scheduled burns (with cancel), mission clock, active script status. **Never position or velocity.**
 
-### 7.9 Script console
+### 7.9 Sequence coding console
 
 Editor + run/stop + console output (logs, errors, burn events, lock events). Multiple named scripts, persisted. See §8.
 
@@ -297,7 +304,7 @@ ship.point(direction: Vec3): Promise<void>          // inertial frame; instant i
 ship.burn(throttle, durationSeconds): Promise<void> // resolves when burn ends
 ship.scheduleBurn(startTime, direction, throttle, duration): BurnHandle
 ship.cancelBurn(handle)
-ship.status(): { forward, deltaVSpent, burning, scheduledBurns }
+ship.status(): { forward, deltaVSpent, burning, scheduledBurns, massKg, maxAcceleration, maxThrustNewtons }
 
 // prediction
 predict(state: {position, velocity, epoch}, burns: Burn[], duration, stepOut): Sample[]
@@ -376,15 +383,15 @@ MVP0 is done when:
 1. `npm run dev` serves the game; `npm run build` produces a static bundle.
 2. Simulation: SI units, heliocentric ecliptic J2000 frame, Sun+Earth+Moon point-mass gravity, tiered fixed-step RK4, deterministic (same seed + same inputs → bit-identical trajectory).
 3. Ephemeris JSON (Horizons-derived, 2-year span, Hermite interpolation) drives all six bodies; star catalog renders ~5k real stars.
-4. Ship starts at either curated seed with true state hidden; no panel, log, or script API leaks position/velocity.
+4. Ship starts at either curated seed with true state hidden; no normal screen/module, log, or script API leaks position/velocity.
 5. Outside view + telescope: correct apparent directions/sizes/brightness, click-to-identify, angular separation measurement, auto-logging.
 6. Radio Level-1 lock returns exact light-time range + direction (Earth at transmit time), auto-logged.
-7. Ephemeris panel, measurement log (export), calc workspace (vector calc, unlimited candidates, candidate-search tables, text notes import/export) all functional.
-8. Trajectory predictor (panel + `predict()`) propagates player-entered states with burns through the same engine; outputs tables.
+7. Three-screen UI is implemented: Telescope, Sequence & Calculation, and Data. Ephemeris data, measurement log (export), calc workspace (vector calc, unlimited candidates, candidate-search tables, text notes import/export), radio/Earth beacon data, ship data (mass, max thrust/acceleration, engine state), and time controls are functional in their assigned screens.
+8. Trajectory predictor (Sequence & Calculation module + `predict()`) propagates player-entered states with burns through the same engine; outputs tables. Data screen summarizes inserted-state closest approach and Earth-relative orbital elements without using truth.
 9. Script console runs sandboxed JS with the full §8.2 API; stop always works; `wait()` advances sim time; scripts persist.
-10. Point-then-burn works live and scheduled; burns execute correctly through warp and skip; Δv accounting on status panel.
+10. Point-then-burn works live and scheduled; burns execute correctly through warp and skip; Δv accounting on the ship data module.
 11. Time warp (pause–10,000×, substepped) and skip-to-time work; auto-interrupt on burns/SOI/win/lose.
-12. Earth capture triggers success screen; <120 km altitude (and Moon/Sun collision) triggers failure; retry preserves scripts/notes/candidates.
+12. Earth capture triggers result overlay; <120 km altitude (and Moon/Sun collision) triggers failure; retry preserves scripts/notes/candidates.
 13. Both seeds pass automated winnability validation.
 14. Debug mode shows truth and map, absent from normal UI.
 15. README documents assumptions, physics model, scripting API, and limitations.
@@ -395,13 +402,13 @@ MVP0 is done when:
 
 1. **Core math + physics**: vectors, constants, RK4, gravity, clock, ephemeris loader + interpolation. Headless, unit-tested (e.g. propagate Earth-orbit test cases, energy conservation checks).
 2. **Data generation**: Horizons ephemeris script, star catalog script.
-3. **Debug map + true-state panel** (test harness for everything after).
+3. **Debug map + true-state view** (test harness for everything after).
 4. **Ship model**: point/burn/scheduleBurn, warp/skip, win/lose detection.
-5. **Script sandbox**: worker, API bridge, wait semantics, console UI.
-6. **Instruments**: radio → ephemeris panel → measurement log → ship status.
+5. **Script sandbox**: worker, API bridge, wait semantics, sequence console UI.
+6. **Data screen modules**: radio/Earth beacon data → ephemeris data → measurement log → ship data → time controls → inserted-state analysis.
 7. **Rendering**: outside view, starfield, bodies, telescope zoom/identify/separation.
-8. **Calc workspace + trajectory predictor panels.**
-9. **Scenario seeds + validation script; retro-OS shell polish; success/failure screens; README.**
+8. **Sequence & Calculation screen**: calculation workspace + trajectory predictor.
+9. **Scenario seeds + validation script; modern UI polish; success/failure overlays; README.**
 
 Steps 1–5 constitute a playable-by-script game (debug map as eyes); 6–8 make it playable as designed.
 
@@ -409,6 +416,6 @@ Steps 1–5 constitute a playable-by-script game (debug map as eyes); 6–8 make
 
 ## 14. Deliberately Deferred Decisions
 
-- Exact retro-OS visual design (only constraint: fictional, no copyrighted assets).
+- Exact modern visual design: layout density, typography, color, and interaction polish.
 - Script `wait()` implementation detail (transform vs. async-await convention).
 - Whether MVP1 adds range-only radio mode, measurement noise, finite rotation, Doppler, or Mars gravity first — revisit after MVP0 playtesting.
