@@ -1,4 +1,4 @@
-1. ship mass
+1. add hardcoded 12000kg ship mass
 2. use UTC for time
 3. telescope sees lightspeed corrected positions: i.e. not where the bodies are now but where they were when the light was emitted
 4. remove radio.earthRange() and radio.earthDirection()

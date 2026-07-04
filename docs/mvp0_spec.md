@@ -20,7 +20,7 @@ Central design rule: **the simulation knows the truth; the player must earn know
 
 ### Resolved: interaction model
 
-MVP0 is a **hybrid**: manual instruments (bryum) *plus* full scripting (bvt) as one instrument among them. The GUI screens and the script API read the same underlying instrument models — a range measured from the radio module and one measured by `radio.earthRange()` are the same measurement, and both land in the measurement log.
+MVP0 is a **hybrid**: manual instruments (bryum) *plus* full scripting (bvt) as one instrument among them. The GUI screens and the script API read the same underlying instrument models — a radio lock taken from the Data screen and one taken by `radio.lockEarth()` are the same measurement type, and both land in the measurement log.
 
 ---
 
@@ -74,7 +74,7 @@ Runs with `npm install && npm run dev`; builds with `npm run build`.
 ### 4.1 Units and frame
 
 **SI internally** (bvt): meters, seconds, kilograms, m/s, m/s², newtons, radians.
-**UI displays**: km, km/s, degrees, human dates (UTC). All screens/modules label units explicitly.
+**UI displays**: km, km/s, degrees, human dates/times in UTC. All screens/modules label units explicitly.
 
 One inertial frame for everything: **heliocentric ecliptic J2000**. Sun at origin `(0,0,0)`, x/y plane = ecliptic, z perpendicular. All ephemeris data converted to this frame at generation time. All player-facing coordinates are in this frame.
 
@@ -138,10 +138,10 @@ Spacecraft-centered floating origin (bvt §7.7): render positions are `(body_pos
 position  : Vector3 (m, heliocentric ecliptic)
 velocity  : Vector3 (m/s)
 attitude  : unit forward vector (see 5.3)
-mass      : constant, irrelevant to dynamics (accel is specified directly)
+mass      : 12,000 kg constant, irrelevant to dynamics (accel is specified directly)
 ```
 
-Position and velocity are hidden from the player and exposed only in debug mode. Mass is ship self-knowledge: a constant, scenario-configured display value used only to present ship specs and equivalent thrust in the Data screen.
+Position and velocity are hidden from the player and exposed only in debug mode. Mass is ship self-knowledge: a hardcoded **12,000 kg** display value used only to present ship specs and equivalent thrust in the Data screen.
 
 ### 5.2 Engine
 
@@ -149,7 +149,7 @@ Fictional high-thrust drive:
 
 - **max acceleration = 0.5 m/s²** (resolved between bryum's 2 and bvt's 0.01–0.1; per-scenario override allowed)
 - throttle ∈ [0, 1]; `a_engine = throttle × 0.5 m/s²`
-- equivalent max thrust is displayed as `massKg × maxAcceleration`; physics still uses acceleration directly
+- equivalent max thrust is displayed as `12,000 kg × maxAcceleration` (6,000 N at the default 0.5 m/s²); physics still uses acceleration directly
 - unlimited fuel, constant mass, no rocket equation (both proposals agree for MVP)
 - finite burns only — no impulsive Δv
 - **forward-only thrust**: the engine pushes along the ship's current forward vector
@@ -178,6 +178,7 @@ No arbitrary-vector thrust without pointing; no RCS translation.
 - **Skip-to-time**: "advance N hours/days" command (GUI button + `wait(seconds)` in scripts). Runs the same substepped propagation; scheduled burns inside the interval execute correctly.
 - Skip/warp **auto-interrupts** on: scheduled burn start, SOI entry, win condition, failure condition, script `wait()` completion.
 - Clock is exact — no drift, no timekeeping error. Displayed as UTC datetime plus mission-elapsed time.
+- All date/time inputs, logs, exports, and displayed timestamps use UTC. Player scripts use Unix seconds from the same UTC-based simulation clock.
 - Epoch: a real present-day date (fixed per scenario seed, e.g. `2026-09-01T00:00:00Z`), so the sky matches reality.
 
 While a player script is running, sim time only advances through the script's `wait()` calls or scheduled activity — the script and the clock never race.
@@ -194,19 +195,25 @@ Primary screens:
 2. **Sequence & Calculation** — sequence coding plus calculation space. It may use tabs for scripts, console output, calculator, candidate estimates, candidate-search tables, and trajectory prediction.
 3. **Data** — all remaining operational data: radio locks, Earth beacon status/light-time details, ephemeris queries, measurement log, ship information, scheduled burns, active script status, time controls, and entered-state analysis.
 
-The Data screen is also where the player analyzes any **inserted state**: a player-entered or selected candidate position+velocity+epoch. From that inserted state only, the game displays closest approach to Earth over a selected prediction horizon, an extension point for later closest-approach readouts to other planets, and Earth-relative orbital information such as apoapsis/apogee, periapsis/perigee, and inclination. These readouts must be clearly labeled as estimate-derived and must never use the hidden true ship state.
+The Data screen is also where the player analyzes any **inserted state**: a player-entered or selected candidate position+velocity+epoch. From that inserted state only, the game displays closest approach to Earth over a selected prediction horizon, an extension point for later closest-approach readouts to other planets, and orbital information. These readouts must be clearly labeled as estimate-derived and must never use the hidden true ship state.
+
+Inserted-state orbital information:
+
+- If the inserted state is treated as a solar orbit, orbital elements are computed relative to the Sun and inclination is measured against the solar ecliptic plane.
+- If the inserted state is treated as an Earth orbit, orbital elements are computed relative to Earth and inclination is measured against the Earth ecliptic plane.
+- Periapsis and apoapsis are displayed as distances from the center of the orbit, not as altitude above a surface. Earth-orbit labels may also show perigee/apogee as the Earth-centered periapsis/apoapsis distances.
 
 ### 7.1 Outside view + telescope
 
 One Three.js viewport with two modes:
 
-**Outside view** — the sky from the ship's true position: real bright-star catalog + Sun/Earth/Moon/Mars/Venus/Jupiter at model-correct apparent directions, angular sizes (`2·atan(R/d)`), and brightness (stars: catalogue magnitude; planets: simplified `reflected × phase / d²`; Sun: `1/d²`). Bodies far away render as points but keep model-based brightness. Free look (drag), no position readout.
+**Outside view** — the sky from the ship's true receive-time position: real bright-star catalog + Sun/Earth/Moon/Mars/Venus/Jupiter at light-time-corrected apparent directions. For each visible solar-system body, solve for the emission time `t_emit` such that light from `body_pos(t_emit)` reaches `ship_pos(t_now)` at `t_now`; render the body where it was when the light was emitted, not where it is at `t_now`. Angular sizes (`2·atan(R/d)`) and brightness (stars: catalogue magnitude; planets: simplified `reflected × phase / d²`; Sun: `1/d²`) use the light-time-corrected distance/phase. Bodies far away render as points but keep model-based brightness. Free look (drag), no position readout.
 
 **Telescope mode** — zoom (FOV control), reticle, and:
 
 - **click-to-identify**: clicking a star or body shows its name; identified bodies can be labelled. No auto-find, no search-to-target (bryum §7.5).
 - **angular separation measurement**: select two identified bodies → measured `θ = arccos(u_A·u_B)`, exact, auto-logged to the measurement log.
-- The telescope does **not** provide absolute bearing / az-el / sky-grid coordinates (bryum §7.6). Absolute directions come only from the star tracker sensor (§7.3) and the radio direction (§7.2).
+- The telescope does **not** provide absolute bearing / az-el / sky-grid coordinates (bryum §7.6). Absolute directions come only from the star tracker sensor (§7.3) and radio-lock direction (§7.2).
 
 Stars are fixed on the sky (no parallax from ship motion). Catalog: filtered real bright-star set (~5,000 stars: RA, dec, magnitude, name where known), generated offline by `scripts/generateStarCatalog.ts`.
 
@@ -221,6 +228,8 @@ signal quality = cosmetic constant in MVP0
 ```
 
 Light-time is honest: range and direction correspond to **Earth's position at transmission time** (bryum §8). `c = 299,792,458 m/s`. No noise, no clock error. Each lock is a discrete measurement event, auto-logged. Range-only hard mode (Level 3) is a post-MVP0 difficulty flag — the instrument model must keep direction separable so it can be switched off later.
+
+The script API exposes radio measurements only through discrete locks. There are no separate range or direction convenience accessors; scripts should use the return value from `radio.lockEarth()` or read prior locks from `log.measurements()`.
 
 ### 7.3 Sensors
 
@@ -253,7 +262,7 @@ Sequence & Calculation module and script API over the same engine. Inputs: **pla
 
 ### 7.8 Ship data
 
-Shows only self-knowledge: configured mass, max acceleration, equivalent max thrust, current attitude (forward vector, inertial frame — the star tracker knows it), engine state, cumulative Δv spent, scheduled burns (with cancel), mission clock, active script status. **Never position or velocity.**
+Shows only self-knowledge: hardcoded 12,000 kg mass, max acceleration, equivalent max thrust, current attitude (forward vector, inertial frame — the star tracker knows it), engine state, cumulative Δv spent, scheduled burns (with cancel), mission clock, active script status. **Never position or velocity.**
 
 ### 7.9 Sequence coding console
 
@@ -275,7 +284,7 @@ Editor + run/stop + console output (logs, errors, burn events, lock events). Mul
 
 ```ts
 // time
-time.now(): number                      // sim time, unix seconds
+time.now(): number                      // sim time, Unix seconds on the UTC-based sim clock
 wait(seconds): Promise<void>
 
 // logging
@@ -284,8 +293,6 @@ log.measurements(): Measurement[]       // read the measurement log
 
 // radio
 radio.lockEarth(): { rangeMeters, direction: Vec3, quality, tSent, tReceived }
-radio.earthRange(): number
-radio.earthDirection(): Vec3
 
 // sensors
 sensors.sunDirection(): Vec3
@@ -304,13 +311,13 @@ ship.point(direction: Vec3): Promise<void>          // inertial frame; instant i
 ship.burn(throttle, durationSeconds): Promise<void> // resolves when burn ends
 ship.scheduleBurn(startTime, direction, throttle, duration): BurnHandle
 ship.cancelBurn(handle)
-ship.status(): { forward, deltaVSpent, burning, scheduledBurns, massKg, maxAcceleration, maxThrustNewtons }
+ship.status(): { forward, deltaVSpent, burning, scheduledBurns, massKg: 12000, maxAcceleration, maxThrustNewtons }
 
 // prediction
 predict(state: {position, velocity, epoch}, burns: Burn[], duration, stepOut): Sample[]
 
 // constants
-C, MU_SUN, MU_EARTH, MU_MOON, R_EARTH, R_MOON, R_SOI_EARTH, AU
+C, MU_SUN, MU_EARTH, MU_MOON, R_EARTH, R_MOON, R_SOI_EARTH, AU, SHIP_MASS_KG
 ```
 
 ### 8.3 Forbidden API (never exposed to player scripts)
@@ -384,13 +391,13 @@ MVP0 is done when:
 2. Simulation: SI units, heliocentric ecliptic J2000 frame, Sun+Earth+Moon point-mass gravity, tiered fixed-step RK4, deterministic (same seed + same inputs → bit-identical trajectory).
 3. Ephemeris JSON (Horizons-derived, 2-year span, Hermite interpolation) drives all six bodies; star catalog renders ~5k real stars.
 4. Ship starts at either curated seed with true state hidden; no normal screen/module, log, or script API leaks position/velocity.
-5. Outside view + telescope: correct apparent directions/sizes/brightness, click-to-identify, angular separation measurement, auto-logging.
+5. Outside view + telescope: light-time-corrected apparent directions/sizes/brightness for solar-system bodies, click-to-identify, angular separation measurement, auto-logging.
 6. Radio Level-1 lock returns exact light-time range + direction (Earth at transmit time), auto-logged.
-7. Three-screen UI is implemented: Telescope, Sequence & Calculation, and Data. Ephemeris data, measurement log (export), calc workspace (vector calc, unlimited candidates, candidate-search tables, text notes import/export), radio/Earth beacon data, ship data (mass, max thrust/acceleration, engine state), and time controls are functional in their assigned screens.
-8. Trajectory predictor (Sequence & Calculation module + `predict()`) propagates player-entered states with burns through the same engine; outputs tables. Data screen summarizes inserted-state closest approach and Earth-relative orbital elements without using truth.
-9. Script console runs sandboxed JS with the full §8.2 API; stop always works; `wait()` advances sim time; scripts persist.
+7. Three-screen UI is implemented: Telescope, Sequence & Calculation, and Data. Ephemeris data, measurement log (export), calc workspace (vector calc, unlimited candidates, candidate-search tables, text notes import/export), radio/Earth beacon data, ship data (hardcoded 12,000 kg mass, max thrust/acceleration, engine state), and time controls are functional in their assigned screens.
+8. Trajectory predictor (Sequence & Calculation module + `predict()`) propagates player-entered states with burns through the same engine; outputs tables. Data screen summarizes inserted-state closest approach and orbital elements without using truth, including center-distance periapsis/apoapsis and the correct solar/Earth reference plane for inclination.
+9. Script console runs sandboxed JS with the full §8.2 API; stop always works; `wait()` advances sim time; scripts persist. Radio scripting exposes `radio.lockEarth()` only for new radio measurements.
 10. Point-then-burn works live and scheduled; burns execute correctly through warp and skip; Δv accounting on the ship data module.
-11. Time warp (pause–10,000×, substepped) and skip-to-time work; auto-interrupt on burns/SOI/win/lose.
+11. Time warp (pause–10,000×, substepped) and skip-to-time work; auto-interrupt on burns/SOI/win/lose. All displayed/user-entered/exported dates and times are UTC.
 12. Earth capture triggers result overlay; <120 km altitude (and Moon/Sun collision) triggers failure; retry preserves scripts/notes/candidates.
 13. Both seeds pass automated winnability validation.
 14. Debug mode shows truth and map, absent from normal UI.
