@@ -11,3 +11,4 @@
       - doppler effect calculations     
       - other calculations
 - when comes close to earth, use google maps API
+- warning: clean your screen before playing
