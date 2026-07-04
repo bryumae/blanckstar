@@ -271,11 +271,22 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     logBtn.textContent = ui.lastSepLogged ? 'Logged' : '＋ Log measurement';
     void canMeasure;
 
-    sunDirSensor.value.textContent = fmtVec(sunDirectionCache);
-    forwardSensor.value.textContent = fmtVec(latestFrame.shipForward);
+    updateSensors();
   }
 
   let sunDirectionCache = { x: 0, y: 0, z: 0 };
+
+  // Sensor readouts change every frame (ship moves), but nothing else in
+  // render() does — rebuilding the identified-objects list and the
+  // <select> option lists on every requestAnimationFrame tick was
+  // destroying/recreating a native <select>'s children out from under an
+  // open dropdown popup, causing it to flicker and stall the compositor.
+  // Only this cheap textContent update runs per frame; render() (which
+  // rebuilds the DOM lists) runs only in response to actual state changes.
+  function updateSensors(): void {
+    sunDirSensor.value.textContent = fmtVec(sunDirectionCache);
+    forwardSensor.value.textContent = fmtVec(latestFrame.shipForward);
+  }
 
   outsideBtn.addEventListener('click', () => {
     viewport.setMode('outside');
@@ -393,7 +404,7 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
       latestFrame = deps.getFrameState();
       viewport.updateFrame(latestFrame);
       viewport.render();
-      render();
+      updateSensors();
     },
     destroy(): void {
       resizeObserver.disconnect();
