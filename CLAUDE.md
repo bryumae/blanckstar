@@ -73,8 +73,8 @@ layer, and a single Vite build.
   High signal only, not style nits.
 - **Reconcile forward work after a substantive change.** A change to behavior,
   schema, or a settled decision can stale tracked work. In the same commit,
-  reconcile what it reshaped: the roadmap meta-issue (**TBD — blanckstar has no
-  tracking issue yet; create one before this applies literally**) — re-check
+  reconcile what it reshaped: the roadmap meta-issue (**#3 — MVP0 roadmap**,
+  phase issues #4–#12) — re-check
   or re-scope the track it touches; the affected issue's body (Goal/Acceptance);
   the relevant ADR addendum and `CHANGELOG.md` `[Unreleased]`; and any issue it
   obsoletes (close via "Closes #N" in the PR). Flag it if the rework is large.
