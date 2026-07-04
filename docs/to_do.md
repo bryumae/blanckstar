@@ -17,4 +17,4 @@
 - make the sun BIG
 - stars have the same apparent brightness
 - remove from catalogue
-- 
+- warning: clean your screen before playing
