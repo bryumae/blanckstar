@@ -4,14 +4,16 @@
 // together.
 import { mountTelescopeScreen } from './ui/telescope';
 import { mountSequenceScreen } from './ui/sequence';
+import type { ConsoleSink } from './ui/sequence';
 import { mountDataScreen } from './ui/data';
+import { SandboxBridge } from './sandbox/bridge';
+import { isDebugEnabled } from './ui/debug/gate';
 import { loadEphemeris, loadStarCatalog } from './net/loadEphemeris';
 import { positionAt, velocityAt } from './core/ephemerisInterp';
 import { add, mul, normalize, cross, vec3 } from './core/vector3';
 import type { SimCommand, SimEvent, StateEvent } from './sim/messages';
 import type { ScenarioSeed } from './sim/types';
 import type { RenderFrameState, TelescopeInstruments } from './render/types';
-import type { SandboxWorkerResponse } from './sandbox/messages';
 import './ui/styles.css';
 
 // TODO(mvp0 #12): temporary dev seed until curated seeds land. Derived from the
@@ -38,7 +40,6 @@ async function main(): Promise<void> {
   const telescopeRoot = document.querySelector<HTMLElement>('#screen-telescope');
   const sequenceRoot = document.querySelector<HTMLElement>('#screen-sequence');
   const dataRoot = document.querySelector<HTMLElement>('#screen-data');
-  if (sequenceRoot) mountSequenceScreen(sequenceRoot);
   if (dataRoot) mountDataScreen(dataRoot);
 
   const fetchImpl: typeof fetch = (input, init) => fetch(input, init);
@@ -46,15 +47,22 @@ async function main(): Promise<void> {
     loadEphemeris(fetchImpl),
     loadStarCatalog(fetchImpl),
   ]);
+  const seed = devSeed(ephemeris);
 
+  // ---- sim worker + event fan-out ----
   const simWorker = new Worker(new URL('./sim/worker.ts', import.meta.url), { type: 'module' });
   const post = (command: SimCommand): void => simWorker.postMessage(command);
+  const simListeners = new Set<(event: SimEvent) => void>();
+  const addSimListener = (cb: (event: SimEvent) => void): void => void simListeners.add(cb);
+  const removeSimListener = (cb: (event: SimEvent) => void): void => void simListeners.delete(cb);
+  simWorker.addEventListener('message', (event: MessageEvent<SimEvent>) => {
+    for (const listener of [...simListeners]) listener(event.data);
+  });
 
   let latestState: StateEvent | null = null;
   let pendingSeparation: ((result: { radians: number; id: string }) => void) | null = null;
   const firstState = new Promise<StateEvent>((resolve) => {
-    const onMessage = (event: MessageEvent<SimEvent>): void => {
-      const e = event.data;
+    addSimListener((e) => {
       if (e.type === 'state') {
         if (!latestState) resolve(e);
         latestState = e;
@@ -68,13 +76,13 @@ async function main(): Promise<void> {
       } else if (e.type === 'error') {
         console.error('[sim]', e);
       }
-    };
-    simWorker.addEventListener('message', onMessage);
+    });
   });
 
-  post({ type: 'init', ephemeris, seed: devSeed(ephemeris) });
+  post({ type: 'init', ephemeris, seed });
   await firstState;
 
+  // ---- telescope screen ----
   const instruments: TelescopeInstruments = {
     measureAngularSeparation(bodyA, bodyB) {
       return new Promise((resolve) => {
@@ -87,7 +95,6 @@ async function main(): Promise<void> {
     const s = latestState as StateEvent;
     return { time: s.simTime, shipPosition: s.ship.position, shipForward: s.ship.forward };
   };
-
   if (telescopeRoot) {
     const handle = mountTelescopeScreen(telescopeRoot, {
       ephemeris,
@@ -102,15 +109,51 @@ async function main(): Promise<void> {
     requestAnimationFrame(loop);
   }
 
-  // Sandbox worker still speaks the scaffold ping protocol; the script-sandbox
-  // phase (#8) replaces this wiring.
-  const sandboxWorker = new Worker(new URL('./sandbox/worker.ts', import.meta.url), {
-    type: 'module',
+  // ---- sandbox bridge + sequence screen ----
+  let sink: ConsoleSink | null = null;
+  const bridge = new SandboxBridge({
+    createSandboxWorker: () =>
+      new Worker(new URL('./sandbox/worker.ts', import.meta.url), { type: 'module' }),
+    postToSim: post,
+    addSimListener,
+    removeSimListener,
+    ephemeris,
+    maxAcceleration: seed.maxAcceleration,
+    onLog: (text) => sink?.appendLine('log', text),
+    onScriptError: (message, line) => sink?.setError(message, line),
+    onDone: () => sink?.appendLine('ok', 'script finished'),
+    onRunningChange: (running) => sink?.setRunning(running),
+    onUnresponsive: (unresponsive) => sink?.setUnresponsive(unresponsive),
   });
-  sandboxWorker.addEventListener('message', (event: MessageEvent<SandboxWorkerResponse>) => {
-    console.log('[sandbox worker]', event.data.type);
+  // Burn/lock events echo into the console output pane (§7.9).
+  addSimListener((e) => {
+    if (e.type === 'burnStarted') sink?.appendLine('event', 'burn started');
+    else if (e.type === 'burnEnded') sink?.appendLine('event', 'burn ended');
+    else if (e.type === 'measurementAdded')
+      sink?.appendLine('event', `measurement logged: ${e.measurement.data.kind}`);
   });
-  sandboxWorker.postMessage({ type: 'ping' });
+  if (sequenceRoot) {
+    mountSequenceScreen(sequenceRoot, {
+      storage: localStorage,
+      console: bridge,
+      bindConsole: (s) => {
+        sink = s;
+      },
+    });
+  }
+
+  // ---- debug overlay (dev builds + ?debug=1 only; dynamic import so it
+  // code-splits out of normal builds — see spec §10) ----
+  if (isDebugEnabled(window.location.search, import.meta.env.DEV)) {
+    const { mountDebugOverlay } = await import('./ui/debug/index');
+    mountDebugOverlay(document.body, {
+      subscribe: (cb) => {
+        addSimListener(cb);
+        return () => removeSimListener(cb);
+      },
+      send: post,
+    });
+  }
 }
 
 void main();
