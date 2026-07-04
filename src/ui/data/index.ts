@@ -1,6 +1,907 @@
-// Data screen (mvp0_spec.md §7, §7.2-7.5, §7.8): radio/Earth beacon, ephemeris
-// queries, measurement log, ship info, scheduled burns, time controls,
-// inserted-state analysis. Not implemented yet — scaffolding only.
-export function mountDataScreen(root: HTMLElement): void {
-  root.textContent = 'Data';
+// Data screen (mvp0_spec.md §7, §7.2-7.5, §7.8, §7 inserted-state paragraphs,
+// §12 AC6/AC7): radio/Earth beacon, ship self-knowledge, scheduled burns, time
+// controls, ephemeris queries, measurement log, and inserted-state analysis.
+// Plain DOM/CSS (repo rule 5), 12-col card grid per docs/design/
+// mission-interface-template.html's DATA section. Drives the sim worker only
+// through the injected `send`/listener seam (ADR-0001) — never imports src/sim
+// internals beyond the frozen message-protocol types.
+import type { EphemerisData } from '../../core/ephemerisTypes';
+import { positionAt, velocityAt } from '../../core/ephemerisInterp';
+import { AU } from '../../core/constants';
+import type { CandidateStore } from '../candidateStore';
+import type {
+  BurnEndedEvent,
+  BurnStartedEvent,
+  EphemerisResultEvent,
+  InterruptedEvent,
+  MeasurementAddedEvent,
+  ScheduledBurnAddedEvent,
+  ScheduledBurnCancelledEvent,
+  SimCommand,
+  SimEvent,
+  SkipProgressEvent,
+} from '../../sim/messages';
+import type {
+  BodyId,
+  Measurement,
+  RadioLockData,
+  ScheduledBurn,
+  ShipState,
+  Vector3,
+  WarpFactor,
+} from '../../sim/types';
+import { WARP_FACTORS } from '../../sim/types';
+import { createMeasurementMirror, type MeasurementMirror } from './measurementMirror';
+import {
+  insertedOrbitalElements,
+  runClosestApproachChunked,
+  type ChunkedRunHandle,
+  type InsertedState,
+  type OrbitReferenceFrame,
+} from './insertedStateAnalysis';
+import {
+  fmtDegrees,
+  fmtKm,
+  fmtKmPerS,
+  fmtKmVec,
+  fmtMet,
+  fmtNumber,
+  fmtScientific,
+  fmtUtc,
+  fmtVec,
+} from './format';
+import './data.css';
+
+export interface DataScreenDeps {
+  readonly ephemeris: EphemerisData;
+  readonly send: (cmd: SimCommand) => void;
+  readonly addSimListener: (cb: (e: SimEvent) => void) => void;
+  readonly removeSimListener: (cb: (e: SimEvent) => void) => void;
+  readonly candidates: CandidateStore;
+  readonly exportText?: (filename: string, text: string) => void;
+}
+
+export interface DataScreenHandle {
+  destroy(): void;
+}
+
+const BODY_IDS: readonly BodyId[] = ['sun', 'earth', 'moon', 'mars', 'venus', 'jupiter'];
+const BODY_COLORS: Readonly<Record<BodyId, string>> = {
+  sun: '#ffd15a',
+  earth: '#4cc9e0',
+  moon: '#94a1b3',
+  mars: '#e0655f',
+  venus: '#e0b455',
+  jupiter: '#a78bfa',
+};
+
+function bodyLabel(id: BodyId): string {
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+function defaultExportText(filename: string, text: string): void {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function card(spanClass: string, title: string): { el: HTMLDivElement; header: HTMLDivElement; body: HTMLDivElement } {
+  const el = document.createElement('div');
+  el.className = `data-card ${spanClass}`;
+  const header = document.createElement('div');
+  header.className = 'data-card-header';
+  const titleEl = document.createElement('span');
+  titleEl.className = 'data-card-title';
+  titleEl.textContent = title;
+  header.appendChild(titleEl);
+  const body = document.createElement('div');
+  body.className = 'data-card-body';
+  el.append(header, body);
+  return { el, header, body };
+}
+
+function row(label: string, value: string, cls = ''): HTMLDivElement {
+  const r = document.createElement('div');
+  r.className = 'data-row';
+  const l = document.createElement('span');
+  l.className = 'label';
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = `value ${cls}`.trim();
+  v.textContent = value;
+  r.append(l, v);
+  return r;
+}
+
+export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataScreenHandle {
+  root.textContent = '';
+  root.classList.add('data-screen');
+
+  const mirror = createMeasurementMirror();
+
+  // Latest known state (from `state` events). Only fields the spec allows to
+  // surface are ever read by the render functions below — position/velocity
+  // are intentionally never touched by this screen (§5.1, §7.8).
+  let ship: ShipState | null = null;
+  let simTime = 0;
+  let missionElapsed = 0;
+  let warp: WarpFactor = 0;
+  let scheduledBurns: ScheduledBurn[] = [];
+  let liveBurn: { startTime: number; endTime: number; throttle: number } | null = null;
+  let lastRadioLock: RadioLockData | null = null;
+  let radioLockCount = 0;
+  let skipFraction: number | null = null;
+  let interruptNote = '';
+
+  // ==================== 1. Radio / Earth beacon ====================
+  const radio = card('data-card--span-4', 'RADIO · EARTH BEACON');
+  const radioStatus = document.createElement('span');
+  radioStatus.className = 'data-status-badge is-idle';
+  radioStatus.innerHTML = '<span class="data-status-dot"></span>NO LOCK YET';
+  radio.header.appendChild(radioStatus);
+
+  const radioLabel = document.createElement('div');
+  radioLabel.className = 'data-hero-label';
+  radioLabel.textContent = 'RANGE = c · (t_received − t_sent)';
+  const radioHero = document.createElement('div');
+  radioHero.className = 'data-hero-value';
+  radioHero.textContent = '—';
+  const radioSub = document.createElement('div');
+  radioSub.className = 'data-hero-sub';
+  radioSub.textContent = '';
+  const radioDivider = document.createElement('div');
+  radioDivider.className = 'data-divider';
+  const radioDirRow = row('Direction (Earth @ t_sent)', '—');
+  const radioQualityRow = row('Signal quality', '—');
+  const radioLastRow = row('Last lock', '—');
+  const radioCountRow = row('History count', '0');
+  const radioBtn = document.createElement('button');
+  radioBtn.className = 'data-btn';
+  radioBtn.textContent = 'radio.lockEarth() — new lock';
+  radioBtn.addEventListener('click', () => deps.send({ type: 'radioLockEarth' }));
+
+  radio.body.append(
+    radioLabel,
+    radioHero,
+    radioSub,
+    radioDivider,
+    radioDirRow,
+    radioQualityRow,
+    radioLastRow,
+    radioCountRow,
+    radioBtn,
+  );
+
+  function renderRadio(): void {
+    if (!lastRadioLock) {
+      radioStatus.className = 'data-status-badge is-idle';
+      radioStatus.innerHTML = '<span class="data-status-dot"></span>NO LOCK YET';
+      radioHero.textContent = '—';
+      radioSub.textContent = '';
+      radioDirRow.querySelector('.value')!.textContent = '—';
+      radioQualityRow.querySelector('.value')!.textContent = '—';
+      radioLastRow.querySelector('.value')!.textContent = '—';
+      radioCountRow.querySelector('.value')!.textContent = String(radioLockCount);
+      return;
+    }
+    radioStatus.className = 'data-status-badge is-ok';
+    radioStatus.innerHTML = '<span class="data-status-dot"></span>LEVEL 1 LOCK';
+    radioHero.textContent = fmtKm(lastRadioLock.rangeMeters);
+    const lightTime = lastRadioLock.tReceived - lastRadioLock.tSent;
+    radioSub.textContent = `${fmtScientific(lastRadioLock.rangeMeters, 8)} m · light-time ${lightTime.toFixed(2)} s`;
+    radioDirRow.querySelector('.value')!.textContent = fmtVec(lastRadioLock.direction);
+    radioQualityRow.querySelector('.value')!.textContent =
+      lastRadioLock.quality >= 1 ? 'NOMINAL' : lastRadioLock.quality.toFixed(2);
+    (radioQualityRow.querySelector('.value') as HTMLElement).className = 'value is-ok';
+    radioLastRow.querySelector('.value')!.textContent = fmtUtc(lastRadioLock.tReceived);
+    radioCountRow.querySelector('.value')!.textContent = String(radioLockCount);
+  }
+
+  // ==================== 2. Ship data ====================
+  const shipCard = card('data-card--span-4', 'SHIP DATA · self-knowledge only');
+  const shipRows = {
+    mass: row('Mass', '12,000 kg'),
+    maxAccel: row('Max acceleration', '—'),
+    maxThrust: row('Equivalent max thrust', '—'),
+    attitude: row('Attitude (forward, inertial)', '—'),
+    engine: row('Engine state', 'IDLE'),
+    deltaV: row('Δv spent (cumulative)', '0.000 km/s'),
+    clock: row('Mission clock', '—'),
+  };
+  const shipNote = document.createElement('div');
+  shipNote.className = 'data-note';
+  shipNote.textContent = 'Position & velocity are never shown — earn them through instruments.';
+  shipCard.body.append(
+    shipRows.mass,
+    shipRows.maxAccel,
+    shipRows.maxThrust,
+    shipRows.attitude,
+    shipRows.engine,
+    shipRows.deltaV,
+    shipRows.clock,
+    shipNote,
+  );
+
+  const DEFAULT_MAX_ACCEL = 0.5;
+  const SHIP_MASS_KG = 12000;
+
+  function renderShip(): void {
+    const maxAccel = DEFAULT_MAX_ACCEL;
+    shipRows.maxAccel.querySelector('.value')!.textContent = `${maxAccel.toFixed(2)} m/s²`;
+    shipRows.maxThrust.querySelector('.value')!.textContent = `${(SHIP_MASS_KG * maxAccel).toLocaleString('en-US')} N`;
+    if (ship) {
+      shipRows.attitude.querySelector('.value')!.textContent = fmtVec(ship.forward);
+      const engineVal = shipRows.engine.querySelector('.value') as HTMLElement;
+      engineVal.textContent = ship.burning ? 'BURNING' : 'IDLE';
+      engineVal.className = ship.burning ? 'value is-ok' : 'value';
+      shipRows.deltaV.querySelector('.value')!.textContent = fmtKmPerS(ship.deltaVSpent);
+    }
+    shipRows.clock.querySelector('.value')!.textContent = `${fmtUtc(simTime)} · ${fmtMet(missionElapsed)}`;
+  }
+
+  // ==================== 3. Scheduled burns ====================
+  const burnsCard = card('data-card--span-5', 'SCHEDULED BURNS · point-then-burn');
+  const burnsList = document.createElement('div');
+  burnsCard.body.appendChild(burnsList);
+
+  function renderBurns(): void {
+    burnsList.textContent = '';
+    if (liveBurn) {
+      const b = document.createElement('div');
+      b.className = 'data-burn-card';
+      const header = document.createElement('div');
+      header.className = 'data-burn-card-header';
+      const idEl = document.createElement('span');
+      idEl.innerHTML = '<span class="data-burn-id">LIVE</span>';
+      const status = document.createElement('span');
+      status.className = 'data-burn-status is-live';
+      status.textContent = 'BURNING';
+      idEl.appendChild(status);
+      header.appendChild(idEl);
+      b.appendChild(header);
+      const grid = document.createElement('div');
+      grid.className = 'data-burn-grid';
+      grid.innerHTML = `
+        <div><span class="k">t_start </span><span class="v">${fmtUtc(liveBurn.startTime)}</span></div>
+        <div><span class="k">t_end </span><span class="v">${fmtUtc(liveBurn.endTime)}</span></div>
+        <div class="span-2"><span class="k">throttle </span><span class="v">${(liveBurn.throttle * 100).toFixed(0)}%</span></div>
+      `;
+      b.appendChild(grid);
+      burnsList.appendChild(b);
+    }
+    if (scheduledBurns.length === 0 && !liveBurn) {
+      const empty = document.createElement('div');
+      empty.className = 'data-empty';
+      empty.textContent = 'No scheduled burns.';
+      burnsList.appendChild(empty);
+      return;
+    }
+    for (const b of scheduledBurns) {
+      const el = document.createElement('div');
+      el.className = 'data-burn-card';
+      const header = document.createElement('div');
+      header.className = 'data-burn-card-header';
+      const left = document.createElement('span');
+      left.innerHTML = `<span class="data-burn-id">#${b.id}</span><span class="data-burn-status">SCHEDULED</span>`;
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'data-burn-cancel';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => deps.send({ type: 'cancelBurn', id: b.id }));
+      header.append(left, cancelBtn);
+      el.appendChild(header);
+
+      const deltaV = b.throttle * DEFAULT_MAX_ACCEL * b.duration;
+      const grid = document.createElement('div');
+      grid.className = 'data-burn-grid';
+      grid.innerHTML = `
+        <div><span class="k">t_start </span><span class="v">${fmtUtc(b.startTime)}</span></div>
+        <div><span class="k">Δv </span><span class="v">${fmtKmPerS(deltaV)}</span></div>
+        <div><span class="k">throttle </span><span class="v">${(b.throttle * 100).toFixed(0)}%</span></div>
+        <div><span class="k">duration </span><span class="v">${b.duration.toFixed(1)} s</span></div>
+        <div class="span-2"><span class="k">direction </span><span class="v">${fmtVec(b.direction)}</span></div>
+      `;
+      el.appendChild(grid);
+      burnsList.appendChild(el);
+    }
+  }
+
+  // ==================== 4. Time controls ====================
+  const timeCard = card('data-card--span-4', 'TIME CONTROLS');
+  const warpLabel = document.createElement('div');
+  warpLabel.className = 'data-hero-label';
+  warpLabel.style.marginBottom = '7px';
+  warpLabel.textContent = 'WARP · substepped per tier';
+  const warpRow = document.createElement('div');
+  warpRow.className = 'data-warp-row';
+  const warpButtons = new Map<WarpFactor, HTMLButtonElement>();
+  const warpLabels: Readonly<Record<WarpFactor, string>> = {
+    0: '⏸',
+    1: '1×',
+    10: '10×',
+    100: '100×',
+    1000: '1k',
+    10000: '10k',
+  };
+  for (const w of WARP_FACTORS) {
+    const btn = document.createElement('button');
+    btn.className = 'data-warp-btn';
+    btn.textContent = warpLabels[w];
+    btn.addEventListener('click', () => deps.send({ type: 'setWarp', factor: w }));
+    warpButtons.set(w, btn);
+    warpRow.appendChild(btn);
+  }
+
+  const skipLabel = document.createElement('div');
+  skipLabel.className = 'data-hero-label';
+  skipLabel.style.marginBottom = '7px';
+  skipLabel.textContent = 'SKIP-TO-TIME · wait(seconds)';
+  const skipRow = document.createElement('div');
+  skipRow.className = 'data-skip-row';
+  const skipInput = document.createElement('input');
+  skipInput.className = 'data-input';
+  skipInput.type = 'number';
+  skipInput.min = '0';
+  skipInput.value = '1';
+  const skipUnit = document.createElement('select');
+  skipUnit.className = 'data-select';
+  for (const u of ['hours', 'days']) {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    skipUnit.appendChild(opt);
+  }
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'data-btn';
+  skipBtn.textContent = '▸▸ Advance';
+  skipBtn.addEventListener('click', () => {
+    const n = Number(skipInput.value);
+    if (!Number.isFinite(n) || n <= 0) return;
+    const seconds = skipUnit.value === 'days' ? n * 86400 : n * 3600;
+    deps.send({ type: 'skipToTime', targetTime: simTime + seconds });
+  });
+  skipRow.append(skipInput, skipUnit, skipBtn);
+
+  const skipProgressWrap = document.createElement('div');
+  skipProgressWrap.className = 'data-skip-progress';
+  const skipProgressBar = document.createElement('div');
+  skipProgressBar.className = 'data-skip-progress-bar';
+  skipProgressWrap.appendChild(skipProgressBar);
+
+  const interruptNoteEl = document.createElement('div');
+  interruptNoteEl.className = 'data-interrupt-note';
+
+  const timeNote = document.createElement('div');
+  timeNote.className = 'data-note';
+  timeNote.textContent =
+    'Auto-interrupts on: scheduled burn start · SOI entry · win · failure · wait() completion.';
+
+  timeCard.body.append(
+    warpLabel,
+    warpRow,
+    skipLabel,
+    skipRow,
+    skipProgressWrap,
+    interruptNoteEl,
+    timeNote,
+  );
+
+  function renderTime(): void {
+    for (const [w, btn] of warpButtons) {
+      btn.classList.toggle('is-active', w === warp);
+    }
+    skipProgressBar.style.width = `${skipFraction !== null ? (skipFraction * 100).toFixed(1) : 0}%`;
+    interruptNoteEl.textContent = interruptNote;
+  }
+
+  // ==================== 5. Ephemeris query ====================
+  const ephemCard = card('data-card--span-7', 'EPHEMERIS · heliocentric ecliptic J2000 (km)');
+  const ephemNow = document.createElement('span');
+  ephemNow.style.fontFamily = 'var(--font-mono)';
+  ephemNow.style.fontSize = '10px';
+  ephemNow.style.color = 'var(--text-faint)';
+  ephemCard.header.appendChild(ephemNow);
+
+  const queryForm = document.createElement('div');
+  queryForm.className = 'data-query-form';
+  const bodySelect = document.createElement('select');
+  bodySelect.className = 'data-select';
+  for (const id of BODY_IDS) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = bodyLabel(id);
+    bodySelect.appendChild(opt);
+  }
+  bodySelect.value = 'earth';
+  const dateInput = document.createElement('input');
+  dateInput.className = 'data-input';
+  dateInput.type = 'datetime-local';
+  dateInput.style.width = '190px';
+  const queryBtn = document.createElement('button');
+  queryBtn.className = 'data-btn';
+  queryBtn.style.width = 'auto';
+  queryBtn.style.flex = '0 0 auto';
+  queryBtn.style.padding = '9px 14px';
+  queryBtn.textContent = 'Query';
+  queryForm.append(bodySelect, dateInput, queryBtn);
+
+  const queryResult = document.createElement('div');
+  queryResult.className = 'data-query-result';
+  queryResult.textContent = 'Enter a time and query a body to see its heliocentric state.';
+
+  const ephemTableWrap = document.createElement('div');
+  const ephemTable = document.createElement('table');
+  ephemTable.className = 'data-table';
+  ephemTable.innerHTML = `
+    <thead><tr>
+      <th>BODY</th><th>X</th><th>Y</th><th>Z</th><th>|r| (AU)</th>
+    </tr></thead>
+    <tbody></tbody>
+  `;
+  ephemTableWrap.appendChild(ephemTable);
+
+  ephemCard.body.remove();
+  ephemCard.el.append(queryForm, queryResult, ephemTableWrap);
+
+  function runQuery(): void {
+    const body = bodySelect.value as BodyId;
+    const t = dateInput.value ? Math.floor(new Date(dateInput.value).getTime() / 1000) : simTime;
+    try {
+      const pos = positionAt(deps.ephemeris, body, t);
+      const vel = velocityAt(deps.ephemeris, body, t);
+      queryResult.innerHTML =
+        `<span class="label">${bodyLabel(body)} @ ${fmtUtc(t)}</span><br/>` +
+        `<span class="label">position</span> ${fmtKmVec(pos)}<br/>` +
+        `<span class="label">velocity</span> ${fmtKmVec(vel)} km/s`;
+    } catch (err) {
+      queryResult.textContent = `Out of ephemeris coverage: ${(err as Error).message}`;
+    }
+  }
+  queryBtn.addEventListener('click', runQuery);
+
+  function renderEphemTable(): void {
+    ephemNow.textContent = `@ ${fmtUtc(simTime)}`;
+    const tbody = ephemTable.querySelector('tbody')!;
+    tbody.textContent = '';
+    for (const id of BODY_IDS) {
+      let pos: Vector3;
+      try {
+        pos = positionAt(deps.ephemeris, id, simTime);
+      } catch {
+        continue;
+      }
+      const r = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="data-body-dot" style="background:${BODY_COLORS[id]}"></span>${bodyLabel(id)}</td>
+        <td>${(pos.x / 1000).toFixed(0)}</td>
+        <td>${(pos.y / 1000).toFixed(0)}</td>
+        <td>${(pos.z / 1000).toFixed(0)}</td>
+        <td>${(r / AU).toFixed(4)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ==================== 6. Measurement log ====================
+  const logCard = card('data-card--span-12', 'MEASUREMENT LOG · append-only · this run');
+  const exportBtn = document.createElement('button');
+  exportBtn.className = 'data-log-export';
+  exportBtn.textContent = '↓ export as text';
+  logCard.header.appendChild(exportBtn);
+  const logTableWrap = document.createElement('div');
+  const logTable = document.createElement('table');
+  logTable.className = 'data-table';
+  logTable.innerHTML = `
+    <thead><tr>
+      <th>MET / UTC</th><th>TYPE</th><th>READOUT</th><th>NOTE</th>
+    </tr></thead>
+    <tbody></tbody>
+  `;
+  logTableWrap.appendChild(logTable);
+  logCard.body.remove();
+  logCard.el.appendChild(logTableWrap);
+
+  function measurementReadout(m: Measurement): string {
+    switch (m.data.kind) {
+      case 'radioLock':
+        return `range ${fmtKm(m.data.rangeMeters)} · dir ${fmtVec(m.data.direction, 2)}`;
+      case 'sunDirection':
+        return `dir ${fmtVec(m.data.direction, 3)}`;
+      case 'starAttitude':
+        return `forward ${fmtVec(m.data.forward, 3)}`;
+      case 'angularSeparation':
+        return `${bodyLabel(m.data.bodyA)} ↔ ${bodyLabel(m.data.bodyB)} = ${fmtDegrees(m.data.radians)}`;
+      default:
+        return '';
+    }
+  }
+
+  function exportLogText(): string {
+    const lines = mirror.all().map((m) => {
+      const note = m.note ? ` — ${m.note}` : '';
+      return `${fmtUtc(m.simTime)}\t${m.data.kind}\t${measurementReadout(m)}${note}`;
+    });
+    return lines.join('\n');
+  }
+
+  exportBtn.addEventListener('click', () => {
+    const text = exportLogText();
+    const exportFn = deps.exportText ?? defaultExportText;
+    exportFn('measurement-log.txt', text);
+  });
+
+  function renderLog(): void {
+    const tbody = logTable.querySelector('tbody')!;
+    tbody.textContent = '';
+    for (const m of mirror.all()) {
+      const tr = document.createElement('tr');
+      const noteCell = document.createElement('td');
+      const noteInput = document.createElement('input');
+      noteInput.className = 'data-log-note-input';
+      noteInput.value = m.note ?? '';
+      noteInput.placeholder = 'add note…';
+      noteInput.addEventListener('change', () => {
+        deps.send({ type: 'annotateMeasurement', id: m.id, note: noteInput.value });
+        mirror.annotate(m.id, noteInput.value);
+      });
+      noteCell.appendChild(noteInput);
+
+      const tagCell = document.createElement('td');
+      const tag = document.createElement('span');
+      tag.className = 'data-log-tag';
+      tag.textContent = m.data.kind;
+      tagCell.appendChild(tag);
+
+      tr.innerHTML = `<td>${fmtUtc(m.simTime)} · ${fmtMet(m.simTime - (deps.ephemeris ? simEpoch : 0))}</td>`;
+      const readoutCell = document.createElement('td');
+      readoutCell.textContent = measurementReadout(m);
+      tr.append(tagCell, readoutCell, noteCell);
+      tbody.appendChild(tr);
+    }
+  }
+
+  let simEpoch = 0;
+
+  // ==================== 7. Inserted-state analysis ====================
+  const analysisCard = card('data-card--span-5', 'INSERTED-STATE ANALYSIS');
+  const refToggle = document.createElement('div');
+  refToggle.className = 'data-toggle-group';
+  const solarBtn = document.createElement('button');
+  solarBtn.className = 'data-toggle-btn is-active';
+  solarBtn.textContent = 'SOLAR';
+  const earthBtn = document.createElement('button');
+  earthBtn.className = 'data-toggle-btn';
+  earthBtn.textContent = 'EARTH';
+  refToggle.append(solarBtn, earthBtn);
+  analysisCard.header.appendChild(refToggle);
+
+  let referenceFrame: OrbitReferenceFrame = 'solar';
+
+  const candidateSelectRow = document.createElement('div');
+  candidateSelectRow.className = 'data-state-form-row';
+  const candidateSelect = document.createElement('select');
+  candidateSelect.className = 'data-select';
+  candidateSelect.style.flex = '1';
+  const candidateLabel = document.createElement('span');
+  candidateLabel.className = 'label';
+  candidateLabel.style.fontSize = '10px';
+  candidateLabel.style.color = 'var(--text-muted)';
+  candidateLabel.textContent = 'load from candidate:';
+  candidateSelectRow.append(candidateLabel, candidateSelect);
+
+  const stateForm = document.createElement('div');
+  stateForm.className = 'data-state-form';
+  function labeledInput(placeholder: string): HTMLInputElement {
+    const input = document.createElement('input');
+    input.className = 'data-input';
+    input.type = 'number';
+    input.step = 'any';
+    input.placeholder = placeholder;
+    input.style.width = '100%';
+    return input;
+  }
+  const posX = labeledInput('x (km)');
+  const posY = labeledInput('y (km)');
+  const posZ = labeledInput('z (km)');
+  const velX = labeledInput('vx (km/s)');
+  const velY = labeledInput('vy (km/s)');
+  const velZ = labeledInput('vz (km/s)');
+  stateForm.append(posX, posY, posZ, velX, velY, velZ);
+
+  const epochRow = document.createElement('div');
+  epochRow.className = 'data-state-form-row';
+  const epochLabel = document.createElement('span');
+  epochLabel.className = 'label';
+  epochLabel.style.fontSize = '10px';
+  epochLabel.style.color = 'var(--text-muted)';
+  epochLabel.textContent = 'epoch (UTC):';
+  const epochInput = document.createElement('input');
+  epochInput.className = 'data-input';
+  epochInput.type = 'datetime-local';
+  epochInput.style.flex = '1';
+  epochRow.append(epochLabel, epochInput);
+
+  const horizonRow = document.createElement('div');
+  horizonRow.className = 'data-horizon-row';
+  const horizons: readonly { label: string; days: number }[] = [
+    { label: '1d', days: 1 },
+    { label: '7d', days: 7 },
+    { label: '30d', days: 30 },
+    { label: '90d', days: 90 },
+  ];
+  let selectedHorizonDays = 30;
+  const horizonButtons: HTMLButtonElement[] = [];
+  for (const h of horizons) {
+    const btn = document.createElement('button');
+    btn.className = 'data-horizon-btn' + (h.days === selectedHorizonDays ? ' is-active' : '');
+    btn.textContent = h.label;
+    btn.addEventListener('click', () => {
+      selectedHorizonDays = h.days;
+      for (const b of horizonButtons) b.classList.remove('is-active');
+      btn.classList.add('is-active');
+    });
+    horizonButtons.push(btn);
+    horizonRow.appendChild(btn);
+  }
+
+  const analyzeBtn = document.createElement('button');
+  analyzeBtn.className = 'data-btn';
+  analyzeBtn.textContent = 'Analyze inserted state';
+
+  const closestApproachBox = document.createElement('div');
+  closestApproachBox.className = 'data-closest-approach';
+  closestApproachBox.textContent = 'No analysis run yet.';
+
+  const estimateBadge = document.createElement('div');
+  estimateBadge.className = 'data-estimate-badge';
+  estimateBadge.textContent = 'ESTIMATE-DERIVED — never validated against actual state';
+
+  const elementsGrid = document.createElement('div');
+  elementsGrid.className = 'data-elements-grid';
+
+  const planeNote = document.createElement('div');
+  planeNote.className = 'data-note';
+  planeNote.textContent = 'Periapsis / apoapsis are center-distances; inclination against the solar ecliptic plane.';
+
+  analysisCard.body.append(
+    candidateSelectRow,
+    stateForm,
+    epochRow,
+    horizonRow,
+    analyzeBtn,
+    closestApproachBox,
+    estimateBadge,
+    elementsGrid,
+    planeNote,
+  );
+
+  let activeChunkedRun: ChunkedRunHandle | null = null;
+
+  function renderCandidateSelect(): void {
+    const prev = candidateSelect.value;
+    candidateSelect.textContent = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = '— none —';
+    candidateSelect.appendChild(blank);
+    for (const c of deps.candidates.list()) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      candidateSelect.appendChild(opt);
+    }
+    candidateSelect.value = prev;
+  }
+
+  candidateSelect.addEventListener('change', () => {
+    const c = deps.candidates.get(candidateSelect.value);
+    if (!c) return;
+    posX.value = String(c.position.x / 1000);
+    posY.value = String(c.position.y / 1000);
+    posZ.value = String(c.position.z / 1000);
+    velX.value = String(c.velocity.x / 1000);
+    velY.value = String(c.velocity.y / 1000);
+    velZ.value = String(c.velocity.z / 1000);
+    epochInput.value = new Date(c.epoch * 1000).toISOString().slice(0, 16);
+  });
+
+  function readInsertedState(): InsertedState | null {
+    const nums = [posX, posY, posZ, velX, velY, velZ].map((i) => Number(i.value));
+    if (nums.some((n) => !Number.isFinite(n))) return null;
+    const [x, y, z, vx, vy, vz] = nums as [number, number, number, number, number, number];
+    const epoch = epochInput.value ? Math.floor(new Date(epochInput.value).getTime() / 1000) : simTime;
+    return {
+      position: { x: x * 1000, y: y * 1000, z: z * 1000 },
+      velocity: { x: vx * 1000, y: vy * 1000, z: vz * 1000 },
+      epoch,
+    };
+  }
+
+  function renderOrbitalElements(inserted: InsertedState): void {
+    const { elements } = insertedOrbitalElements(inserted, deps.ephemeris, referenceFrame);
+    const periLabel = referenceFrame === 'earth' ? 'Perigee (periapsis)' : 'Periapsis';
+    const apoLabel = referenceFrame === 'earth' ? 'Apogee (apoapsis)' : 'Apoapsis';
+    const rows: readonly [string, string][] = [
+      ['Semi-major axis', fmtKm(elements.semiMajorAxis)],
+      ['Eccentricity', fmtNumber(elements.eccentricity, 4)],
+      ['Inclination', fmtDegrees(elements.inclination)],
+      [periLabel, fmtKm(elements.periapsis)],
+      [apoLabel, elements.apoapsis === Infinity ? '∞ (unbound)' : fmtKm(elements.apoapsis)],
+      ['Period', elements.period === null ? '— (unbound)' : `${(elements.period / 86400).toFixed(2)} days`],
+    ];
+    elementsGrid.textContent = '';
+    for (const [k, v] of rows) {
+      const r = document.createElement('div');
+      r.style.display = 'flex';
+      r.style.justifyContent = 'space-between';
+      r.style.alignItems = 'baseline';
+      r.style.borderBottom = '1px solid var(--border-row)';
+      r.style.paddingBottom = '7px';
+      r.innerHTML = `<span style="font-size:11px;color:var(--text-tertiary)">${k}</span><span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary)">${v}</span>`;
+      elementsGrid.appendChild(r);
+    }
+    planeNote.textContent = `Periapsis / apoapsis are center-distances; inclination against the ${
+      referenceFrame === 'earth' ? 'Earth ecliptic' : 'solar ecliptic'
+    } plane.`;
+  }
+
+  function setReferenceFrame(frame: OrbitReferenceFrame): void {
+    referenceFrame = frame;
+    solarBtn.classList.toggle('is-active', frame === 'solar');
+    earthBtn.classList.toggle('is-active', frame === 'earth');
+    const inserted = readInsertedState();
+    if (inserted) renderOrbitalElements(inserted);
+  }
+  solarBtn.addEventListener('click', () => setReferenceFrame('solar'));
+  earthBtn.addEventListener('click', () => setReferenceFrame('earth'));
+
+  analyzeBtn.addEventListener('click', () => {
+    const inserted = readInsertedState();
+    if (!inserted) {
+      closestApproachBox.textContent = 'Enter a complete position, velocity, and epoch first.';
+      return;
+    }
+    renderOrbitalElements(inserted);
+
+    activeChunkedRun?.cancel();
+    closestApproachBox.textContent = 'Propagating… 0%';
+    const horizonSeconds = selectedHorizonDays * 86400;
+    activeChunkedRun = runClosestApproachChunked(
+      inserted,
+      deps.ephemeris,
+      horizonSeconds,
+      (result) => {
+        closestApproachBox.innerHTML =
+          `<span class="label" style="font-size:10px;color:var(--text-muted)">CLOSEST APPROACH TO EARTH${
+            result.reachedHorizon ? '' : ' (ephemeris coverage ended early)'
+          }</span><br/>` +
+          `<span style="font-family:var(--font-mono);font-size:16px;color:var(--accent)">${fmtKm(result.distanceMeters)}</span> ` +
+          `<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">@ ${fmtUtc(result.atTime)}</span>`;
+      },
+      (fraction) => {
+        closestApproachBox.textContent = `Propagating… ${(fraction * 100).toFixed(0)}%`;
+      },
+    );
+  });
+
+  // ==================== assembly ====================
+  root.append(
+    radio.el,
+    shipCard.el,
+    timeCard.el,
+    ephemCard.el,
+    burnsCard.el,
+    analysisCard.el,
+    logCard.el,
+  );
+
+  renderCandidateSelect();
+  const unsubscribeCandidates = deps.candidates.subscribe(renderCandidateSelect);
+
+  function render(): void {
+    renderRadio();
+    renderShip();
+    renderBurns();
+    renderTime();
+    renderEphemTable();
+    renderLog();
+  }
+  render();
+
+  function onSimEvent(e: SimEvent): void {
+    switch (e.type) {
+      case 'ready':
+        simEpoch = e.epoch;
+        mirror.clear();
+        lastRadioLock = null;
+        radioLockCount = 0;
+        scheduledBurns = [];
+        liveBurn = null;
+        skipFraction = null;
+        interruptNote = '';
+        render();
+        break;
+      case 'state': {
+        ship = e.ship;
+        simTime = e.simTime;
+        missionElapsed = e.missionElapsed;
+        warp = e.warp;
+        render();
+        break;
+      }
+      case 'measurementAdded': {
+        const ev = e as MeasurementAddedEvent;
+        mirror.add(ev.measurement);
+        if (ev.measurement.data.kind === 'radioLock') {
+          lastRadioLock = ev.measurement.data;
+          radioLockCount += 1;
+        }
+        render();
+        break;
+      }
+      case 'burnStarted': {
+        const ev = e as BurnStartedEvent;
+        liveBurn = { startTime: ev.startTime, endTime: ev.endTime, throttle: ev.throttle };
+        renderBurns();
+        break;
+      }
+      case 'burnEnded': {
+        void (e as BurnEndedEvent);
+        liveBurn = null;
+        renderBurns();
+        break;
+      }
+      case 'scheduledBurnAdded': {
+        const ev = e as ScheduledBurnAddedEvent;
+        scheduledBurns = [...scheduledBurns, ev.burn];
+        renderBurns();
+        break;
+      }
+      case 'scheduledBurnCancelled': {
+        const ev = e as ScheduledBurnCancelledEvent;
+        scheduledBurns = scheduledBurns.filter((b) => b.id !== ev.id);
+        renderBurns();
+        break;
+      }
+      case 'interrupted': {
+        const ev = e as InterruptedEvent;
+        interruptNote = `Interrupted: ${ev.reason} @ ${fmtUtc(ev.simTime)}`;
+        skipFraction = null;
+        renderTime();
+        break;
+      }
+      case 'skipProgress': {
+        const ev = e as SkipProgressEvent;
+        skipFraction = ev.fraction;
+        renderTime();
+        break;
+      }
+      case 'ephemerisResult': {
+        void (e as EphemerisResultEvent);
+        break;
+      }
+      case 'won':
+      case 'lost':
+        skipFraction = null;
+        renderTime();
+        break;
+      default:
+        break;
+    }
+  }
+  deps.addSimListener(onSimEvent);
+
+  return {
+    destroy(): void {
+      deps.removeSimListener(onSimEvent);
+      unsubscribeCandidates();
+      activeChunkedRun?.cancel();
+      root.textContent = '';
+      root.classList.remove('data-screen');
+    },
+  };
 }
