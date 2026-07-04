@@ -178,6 +178,77 @@ describe('win / lose (§2, AC12)', () => {
   });
 });
 
+describe('DEBUG teleport + diagnostics (§10)', () => {
+  it('debugTeleport overwrites position/velocity and re-emits state', () => {
+    const { sim, c } = freshSim();
+    const position = { x: 1e10, y: 2e10, z: 3e10 };
+    const velocity = { x: 100, y: 200, z: 300 };
+    sim.debugTeleport(position, velocity);
+    const state = c.ofType('state');
+    expect(state).toHaveLength(1);
+    expect(state[0]!.ship.position).toEqual(position);
+    expect(state[0]!.ship.velocity).toEqual(velocity);
+  });
+
+  it('debugTeleport recomputes the SOI edge-detect flag (no spurious interrupt on the next step)', () => {
+    const earthP = positionAt(eph, 'earth', epoch);
+    const { sim, c } = freshSim();
+    // Teleport straight into Earth's SOI.
+    sim.debugTeleport({ x: earthP.x + 1e8, y: earthP.y, z: earthP.z }, velocityAt(eph, 'earth', epoch));
+    c.clear();
+    sim.stepOnce(1); // one small step, still inside SOI
+    expect(c.ofType('interrupted').filter((e) => e.reason === 'earth-soi-entry')).toHaveLength(0);
+  });
+
+  it('debugTeleport is a no-op once the game is over', () => {
+    const { sim, c } = freshSim(atmosphereSeed(eph, epoch));
+    sim.stepOnce(Infinity);
+    expect(sim.isOver()).toBe(true);
+    c.clear();
+    sim.debugTeleport({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
+    expect(c.ofType('state')).toHaveLength(0);
+  });
+
+  it('debugTeleport is a no-op before init', () => {
+    const c = new EventCollector();
+    const sim = new Simulation(c.emit);
+    sim.debugTeleport({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
+    expect(c.events).toHaveLength(0);
+  });
+
+  it('state events carry integrator diagnostics: lastDt, substepsLastTick, totalSteps', () => {
+    const { sim, c } = freshSim();
+    sim.stepOnce(Infinity);
+    sim.stepOnce(Infinity);
+    sim.stepOnce(Infinity);
+    c.clear();
+    sim.emitState();
+    const state = c.ofType('state')[0]!;
+    expect(state.debug).toBeDefined();
+    expect(state.debug!.lastDt).toBeGreaterThan(0);
+    expect(state.debug!.totalSteps).toBe(3);
+    // substepsLastTick counts stepOnce calls since the previous emitState.
+    expect(state.debug!.substepsLastTick).toBe(3);
+
+    c.clear();
+    sim.stepOnce(Infinity);
+    sim.emitState();
+    expect(c.ofType('state')[0]!.debug!.substepsLastTick).toBe(1);
+    expect(c.ofType('state')[0]!.debug!.totalSteps).toBe(4);
+  });
+
+  it('diagnostics counters reset on reset()', () => {
+    const { sim, c } = freshSim();
+    sim.stepOnce(Infinity);
+    sim.reset();
+    c.clear();
+    sim.emitState();
+    const state = c.ofType('state')[0]!;
+    expect(state.debug!.totalSteps).toBe(0);
+    expect(state.debug!.lastDt).toBe(0);
+  });
+});
+
 describe('auto-interrupt on Earth SOI entry (§6)', () => {
   it('interrupts on the inward crossing of R_SOI_EARTH', () => {
     // Start just outside SOI, heading straight at Earth.

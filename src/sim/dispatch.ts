@@ -65,6 +65,10 @@ export class SimDispatcher {
       case 'ephemerisQuery':
         this.sim.ephemerisQuery(command.requestId, command.body, command.t);
         return;
+      case 'debugTeleport':
+        // DEBUG-only (§10)
+        this.sim.debugTeleport(command.position, command.velocity);
+        return;
     }
   }
 }

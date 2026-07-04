@@ -113,6 +113,16 @@ export interface EphemerisQueryCommand {
   readonly t: number;
 }
 
+// DEBUG-only (§10): force ship position/velocity to arbitrary values. Only
+// meaningful behind the debug gate (src/ui/debug); the sim itself just applies
+// it unconditionally when initialized and not over, so no debug flag needs to
+// cross the worker boundary.
+export interface DebugTeleportCommand {
+  readonly type: 'debugTeleport';
+  readonly position: Vector3;
+  readonly velocity: Vector3;
+}
+
 export type SimCommand =
   | InitCommand
   | ResetCommand
@@ -127,7 +137,8 @@ export type SimCommand =
   | StarAttitudeCommand
   | AngularSeparationCommand
   | AnnotateMeasurementCommand
-  | EphemerisQueryCommand;
+  | EphemerisQueryCommand
+  | DebugTeleportCommand;
 
 // ---- Events: simulation worker -> main thread ----
 
@@ -150,6 +161,16 @@ export interface StateEvent {
   readonly warp: WarpFactor;
   readonly ship: ShipState;
   readonly bodies: Readonly<Record<BodyId, Vector3>>; // positions at simTime
+  // DEBUG diagnostics (§10): integrator dt/substep counters for the debug
+  // overlay. Additive, non-breaking — optional so existing consumers/tests are
+  // unaffected. `lastDt` is the substep size (s) used by the most recent
+  // stepOnce; `substepsLastTick` and `totalSteps` are cumulative counters
+  // reset on init/reset.
+  readonly debug?: {
+    readonly lastDt: number;
+    readonly substepsLastTick: number;
+    readonly totalSteps: number;
+  };
 }
 
 export interface MeasurementAddedEvent {

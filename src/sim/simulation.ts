@@ -51,6 +51,14 @@ export class Simulation {
   private over = false; // win or lose reached; stepping halts until reset
   private insideSOI = false; // for inward-crossing edge detection
 
+  // DEBUG diagnostics (§10): integrator counters surfaced on the state stream.
+  // `substepsLastTick` counts stepOnce calls since the last emitState, then
+  // resets — it approximates "substeps executed this tick" for whatever cadence
+  // the caller emits state at (a driver tick or a single stepOnce+emit in tests).
+  private lastDt = 0;
+  private substepsSinceEmit = 0;
+  private totalSteps = 0;
+
   private readonly burns = new BurnManager();
   private readonly log = new MeasurementLog();
 
@@ -81,6 +89,9 @@ export class Simulation {
     this.burns.reset();
     this.log.reset();
     this.insideSOI = this.computeInsideSOI();
+    this.lastDt = 0;
+    this.substepsSinceEmit = 0;
+    this.totalSteps = 0;
   }
 
   // ---- accessors (used by the driver and tests) ----
@@ -146,6 +157,20 @@ export class Simulation {
     }
     const burn = this.burns.schedule(startTime, direction, throttle, duration);
     this.emit({ type: 'scheduledBurnAdded', burn });
+  }
+
+  // DEBUG-only (§10): force ship position/velocity, e.g. from the debug map's
+  // teleport form. No-op when uninitialized or the game is already over,
+  // matching every other ship command's guard. Recomputes the SOI edge-detect
+  // flag from the new position so a teleport across the SOI boundary doesn't
+  // spuriously fire (or miss) the inward-crossing interrupt on the next step.
+  debugTeleport(position: Vector3, velocity: Vector3): void {
+    if (!this.ephemeris || !this.seed || this.over) {
+      return;
+    }
+    this.state = { position, velocity };
+    this.insideSOI = this.computeInsideSOI();
+    this.emitState();
   }
 
   cancelBurn(id: number): void {
@@ -256,6 +281,9 @@ export class Simulation {
 
     this.state = advance(eph, this.state, this.simTime, dt, thrust);
     this.simTime += dt;
+    this.lastDt = dt; // DEBUG diagnostics
+    this.substepsSinceEmit += 1;
+    this.totalSteps += 1;
     if (burning && active) {
       this.deltaVSpent += deltaVForSubstep(active.throttle, this.maxAcceleration, dt);
     }
@@ -379,7 +407,9 @@ export class Simulation {
       warp: this.warp,
       ship,
       bodies,
+      debug: { lastDt: this.lastDt, substepsLastTick: this.substepsSinceEmit, totalSteps: this.totalSteps },
     });
+    this.substepsSinceEmit = 0; // DEBUG diagnostics: reset the per-emit counter
   }
 
   private requireEphemeris(): EphemerisData {
