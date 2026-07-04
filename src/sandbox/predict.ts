@@ -119,9 +119,11 @@ export function predict(
     // remain bit-identical to the sim's own propagation.
     if (t >= nextOut - 1e-9) {
       samples.push({ t, position: state.position, velocity: state.velocity });
-      do {
-        nextOut += stepOut;
-      } while (nextOut <= t + 1e-9);
+      // Advance to the first output tick strictly after t, in O(1). A do/while
+      // += stepOut would spin (or stall entirely when stepOut < ULP(t) at large
+      // epochs) for a step that spanned many ticks; `max(1, …)` guarantees
+      // forward progress even when t sits within epsilon of nextOut.
+      nextOut += Math.max(1, Math.floor((t - nextOut) / stepOut) + 1) * stepOut;
     }
   }
 

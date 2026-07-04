@@ -185,6 +185,17 @@ describe('win / lose (§2, AC12)', () => {
     expect(c.ofType('skipProgress').some((p) => p.fraction === 1)).toBe(true);
   });
 
+  it('reset emits a ready event (so ready-keyed consumers re-init on retry) (#B1)', () => {
+    const { sim, c } = freshSim(cruiseSeed(eph, epoch));
+    c.clear();
+    sim.reset();
+    const ready = c.ofType('ready');
+    expect(ready).toHaveLength(1);
+    expect(ready[0]!.epoch).toBe(epoch);
+    // and a following state, like init.
+    expect(c.ofType('state').length).toBeGreaterThan(0);
+  });
+
   it('reset restarts from the seed and clears the log', () => {
     const { sim, c } = freshSim(atmosphereSeed(eph, epoch));
     sim.stepOnce(Infinity);

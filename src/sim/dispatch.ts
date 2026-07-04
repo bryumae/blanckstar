@@ -25,8 +25,7 @@ export class SimDispatcher {
         return;
       case 'reset':
         this.driver.stop();
-        this.sim.reset();
-        this.sim.emitState();
+        this.sim.reset(); // emits ready + state (like init)
         return;
       case 'setWarp':
         this.driver.setWarp(command.factor);

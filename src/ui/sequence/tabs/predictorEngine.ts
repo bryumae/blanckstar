@@ -168,9 +168,9 @@ export function propagateForPrediction(
 
     if (t >= nextOut - 1e-9) {
       samples.push(sampleAt(ephemeris, state, t));
-      do {
-        nextOut += stepOutSeconds;
-      } while (nextOut <= t + 1e-9);
+      // O(1) advance to the first tick after t (see predict.ts): a do/while
+      // would spin or stall (stepOut < ULP(t)) for a step spanning many ticks.
+      nextOut += Math.max(1, Math.floor((t - nextOut) / stepOutSeconds) + 1) * stepOutSeconds;
       onProgress?.(Math.min(1, (t - input.epoch) / durationSeconds));
     }
   }
@@ -250,9 +250,8 @@ export async function propagateForPredictionChunked(
 
     if (t >= nextOut - 1e-9) {
       samples.push(sampleAt(ephemeris, state, t));
-      do {
-        nextOut += stepOutSeconds;
-      } while (nextOut <= t + 1e-9);
+      // O(1) advance to the first tick after t (see predict.ts).
+      nextOut += Math.max(1, Math.floor((t - nextOut) / stepOutSeconds) + 1) * stepOutSeconds;
     }
 
     // Yield ~every chunkSeconds of sim time, without perturbing the grid above.
@@ -265,9 +264,8 @@ export async function propagateForPredictionChunked(
       if (options.isCancelled?.()) {
         return null;
       }
-      do {
-        nextYield += chunkSeconds;
-      } while (nextYield <= t);
+      // O(1) advance past t (same reasoning as the sample tick).
+      nextYield += Math.max(1, Math.floor((t - nextYield) / chunkSeconds) + 1) * chunkSeconds;
     }
   }
 

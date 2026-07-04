@@ -70,11 +70,13 @@ export class Simulation {
     this.ephemeris = ephemeris;
     this.seed = seed;
     this.reset();
-    this.emit({ type: 'ready', seedId: seed.id, epoch: seed.epoch });
-    this.emitState();
   }
 
   // Restart from the seed; clears measurement log, burns, Δv, warp (§2.3).
+  // Emits `ready` + the initial state so every consumer (shell, data, telescope,
+  // and the sandbox bridge's `simEnded` guard) re-initializes identically to a
+  // fresh init — a plain reset used to emit only `state`, silently stranding
+  // those `ready`-keyed resets on "Retry same seed".
   reset(): void {
     const seed = this.requireSeed();
     this.maxAcceleration = seed.maxAcceleration ?? MAX_ACCELERATION;
@@ -92,6 +94,8 @@ export class Simulation {
     this.lastDt = 0;
     this.substepsSinceEmit = 0;
     this.totalSteps = 0;
+    this.emit({ type: 'ready', seedId: seed.id, epoch: seed.epoch });
+    this.emitState();
   }
 
   // ---- accessors (used by the driver and tests) ----

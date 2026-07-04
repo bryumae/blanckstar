@@ -109,4 +109,18 @@ describe('predict', () => {
   it('throws on non-positive stepOut', () => {
     expect(() => predict(eph, input, [], 3600, 0)).toThrow(/stepOut/);
   });
+
+  it('terminates with a tiny stepOut at a large epoch (no do/while spin/stall)', () => {
+    // Regression: the epoch here is ~1.79e9 s, where ULP(t) ≈ 2.4e-7. A
+    // `do { nextOut += stepOut } while (nextOut <= t)` loop would spin tens of
+    // millions of times per step for stepOut=1e-6, or stall forever for a
+    // stepOut below ULP. The O(1) advance must return promptly and bounded.
+    const rows = predict(eph, input, [], 600, 1e-6);
+    expect(rows.length).toBeGreaterThan(0);
+    // One row per integration step (dt=60s cruise over 600s) plus endpoints —
+    // never one-per-tick (600/1e-6 = 6e8 rows would be the buggy explosion).
+    expect(rows.length).toBeLessThan(1000);
+    // Sub-ULP stepOut: must still terminate (previously an infinite loop).
+    expect(predict(eph, input, [], 120, 1e-9).length).toBeGreaterThan(0);
+  });
 });

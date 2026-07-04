@@ -143,4 +143,9 @@ keyed to a now/past target resolves rather than hanging; a win/lose verdict
 reached during a skip returns without also emitting `interrupted`; and the
 `WarpDriver` advances whole boundary-snapped substeps against a carried budget
 rather than clamping `dt` to the per-tick wall-clock slice, making a warped run
-frame-rate independent and bit-identical to `skipToTime`.
+frame-rate independent and deterministic across machines — it follows the same
+integration grid as `skipToTime` (identical state at any shared step edge),
+though it overshoots an arbitrary target by up to one substep so it is not
+bit-identical to a skip to an off-grid time. A per-tick substep cap
+(`MAX_STEPS_PER_TICK`) drops leftover budget under overload, so the carried
+budget cannot accumulate into a freeze.

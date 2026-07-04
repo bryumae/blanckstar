@@ -20,6 +20,14 @@ export type WallClock = () => number;
 
 export const STATE_EMIT_INTERVAL_MS = 100; // ~10 Hz (§7 events)
 
+// Hard ceiling on physics substeps run in a single tick. Bounds worst-case
+// compute per frame and, together with dropping any leftover budget when it is
+// hit, prevents a "spiral of death": if substeps ever cost more wall time than
+// they represent (high warp near a body), the carried budget can't grow without
+// bound and freeze the worker — warp just falls behind real time under overload.
+// Well above any normal per-tick need (max warp × a slow frame ÷ smallest dt).
+export const MAX_STEPS_PER_TICK = 5000;
+
 export class WarpDriver {
   private cancel: (() => void) | null = null;
   private lastTickWallMs = 0;
@@ -27,10 +35,12 @@ export class WarpDriver {
   // Unspent sim-seconds carried between ticks. Wall-clock time is accumulated
   // here and drawn down by whole physics substeps; it is NEVER used to shorten a
   // substep. That keeps the integration grid (selectTimestep + burn boundaries)
-  // independent of frame cadence, so a warped run is deterministic and matches
-  // skipToTime — the previous per-tick dt clamp made warp frame-rate dependent
-  // (§6 bit-reproducibility). The trade-off is up to one substep of overshoot
-  // per tick, which averages out; at low warp near a body dt is already small.
+  // independent of frame cadence, so a warped run is deterministic across
+  // machines/frame rates and follows the same grid as skipToTime (identical
+  // state at any shared step edge) — the previous per-tick dt clamp made warp
+  // frame-rate dependent (§6 reproducibility). Warp overshoots an arbitrary
+  // target by up to one substep (it has no target to land on), so it is not
+  // bit-identical to a skip to an off-grid time; it averages out.
   private budget = 0;
 
   constructor(
@@ -57,6 +67,7 @@ export class WarpDriver {
       this.cancel();
       this.cancel = null;
     }
+    this.budget = 0; // don't carry pacing debt across a stop/reset/init boundary
   }
 
   // One animation-ish tick: advance sim by (wall elapsed * warp) sim-seconds in
@@ -67,7 +78,15 @@ export class WarpDriver {
     this.lastTickWallMs = wallNow;
 
     this.budget += (wallElapsedMs / 1000) * factor; // sim-seconds to advance
+    let steps = 0;
     while (this.budget > 0 && !this.sim.isOver()) {
+      if (steps >= MAX_STEPS_PER_TICK) {
+        // Overloaded: substeps can't keep pace with the requested warp. Drop the
+        // unspent budget so it can't accumulate tick-over-tick into a freeze;
+        // warp simply runs slower than requested this frame.
+        this.budget = 0;
+        break;
+      }
       const before = this.sim.getSimTime();
       // Infinity: take a full boundary-snapped substep, never a wall-clock-sized
       // partial one — the grid must not depend on frame timing (see `budget`).
@@ -79,9 +98,14 @@ export class WarpDriver {
         return;
       }
       if (advanced <= 0) {
-        break; // no progress possible (defensive; shouldn't happen with dt>0)
+        // No forward progress (a boundary within a float ULP at large simTime).
+        // Drop the budget rather than carrying it, or it would be retried every
+        // tick forever with no advance.
+        this.budget = 0;
+        break;
       }
       this.budget -= advanced; // may go slightly negative; carried to next tick
+      steps += 1;
     }
 
     // Throttled state emission (~10 Hz), plus one at the batch end.

@@ -13,8 +13,10 @@
   reached during `skipToTime` no longer emits a spurious `interrupted`
   alongside the verdict. Warp: the driver now advances whole boundary-snapped
   substeps against a carried budget instead of clamping `dt` to a wall-clock
-  slice, so a warped run is frame-rate independent and bit-matches
-  `skipToTime` (§6). Sandbox: the parameter-shadow backstop (`runner.ts`) now
+  slice, so a warped run is frame-rate independent and deterministic across
+  machines, following the same integration grid as `skipToTime` (§6); a
+  per-tick substep cap drops leftover budget under overload so the carried
+  budget can't spiral into a freeze. Sandbox: the parameter-shadow backstop (`runner.ts`) now
   covers every §8.1 forbidden network/messaging global, not just the hint
   names (ADR-0002 addendum). Predictor parity: `predict()` and the Predictor
   tab no longer feed the output-sample cadence (or chunk boundary) into the

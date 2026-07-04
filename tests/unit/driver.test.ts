@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SimDispatcher } from '../../src/sim/dispatch';
-import { STATE_EMIT_INTERVAL_MS } from '../../src/sim/driver';
+import { STATE_EMIT_INTERVAL_MS, MAX_STEPS_PER_TICK } from '../../src/sim/driver';
+import { DT_CRUISE } from '../../src/core/timestep';
 import type { TickScheduler, WallClock } from '../../src/sim/driver';
 import { EventCollector, loadRealEphemeris, coverageEpoch, cruiseSeed } from './simHelpers';
 
@@ -71,6 +72,27 @@ describe('WarpDriver pacing (§6)', () => {
     skipDisp.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });
     skipDisp.sim.skipToTime(even.simTime);
     expect(cs.ofType('state').at(-1)!.ship.position).toEqual(even.pos);
+  });
+
+  it('caps substeps per tick and drops leftover budget under overload (no spiral) (#D1)', () => {
+    // A huge wall delta at high warp (e.g. a backgrounded tab) would inject an
+    // enormous budget. The tick must run at most MAX_STEPS_PER_TICK substeps and
+    // drop the rest — carrying it would let the budget grow tick-over-tick into a
+    // freeze. Advancing a bounded amount and returning is the proof it didn't.
+    const { dispatcher, advanceWall, pump } = harness();
+    dispatcher.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });
+    dispatcher.handle({ type: 'setWarp', factor: 10_000 });
+    advanceWall(3_600_000); // 1 hour of wall time in one tick -> 3.6e10 sim-sec budget
+    pump();
+    const advanced = dispatcher.sim.getSimTime() - epoch;
+    // Bounded by the per-tick cap (cruise dt), not the (astronomically larger) budget.
+    expect(advanced).toBeLessThanOrEqual(MAX_STEPS_PER_TICK * DT_CRUISE);
+    expect(advanced).toBeGreaterThan(0);
+    // A subsequent normal tick still advances (budget was dropped, not stuck).
+    const midTime = dispatcher.sim.getSimTime();
+    advanceWall(100);
+    pump();
+    expect(dispatcher.sim.getSimTime()).toBeGreaterThan(midTime);
   });
 
   it('pause (factor 0) stops the tick loop', () => {

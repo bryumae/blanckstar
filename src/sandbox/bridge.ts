@@ -195,6 +195,10 @@ export class SandboxBridge {
     this.rejectAll('script restarted');
     this.nextEphemerisReqId = 1;
     this.waitWaiter = null;
+    // NB: `simEnded` is intentionally NOT cleared here — it mirrors the sim's
+    // over-state (set on won/lost, cleared on ready from init/reset). A new run
+    // while the sim is still over must keep it true so wait() short-circuits
+    // rather than posting a skipToTime the sim no-ops (which would hang).
   }
 
   private rejectAll(reason: string): void {
@@ -440,10 +444,11 @@ export class SandboxBridge {
       }
       case 'burnEnded':
         this.latestDeltaV = event.deltaVSpent;
-        // Only an immediate burn() is awaited on its end (scheduledId === null).
+        // Only an immediate burn() is awaited on its end (scheduledId == null).
         // A scheduled burn's completion must not resolve a pending burn() waiter
-        // — scheduleBurn() already resolved when the burn was queued.
-        if (event.scheduledId === null) {
+        // — scheduleBurn() already resolved when the burn was queued. `== null`
+        // (not `=== null`) so an event missing the field never strands a waiter.
+        if (event.scheduledId == null) {
           this.burnWaiters.shift()?.resolve(undefined);
         }
         return;
