@@ -1,0 +1,453 @@
+/* Calculator / Candidates / Trajectory Predictor tabs (mvp0_spec.md §7.6, §7.7).
+ * Vanilla CSS, no framework (repo rule 5) — hand-ported from
+ * docs/design/mission-interface-template.html's Sequence & Calculation
+ * sections, styled via the shared tokens in src/ui/styles.css. */
+@import '../../styles.css';
+
+.calc-tab {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: var(--pad-screen);
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  align-content: start;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+.calc-tab .panel,
+.cand-tab .panel,
+.pred-tab .panel {
+  background: var(--bg-panel-header);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: var(--pad-panel);
+}
+
+.calc-tab .panel-title,
+.cand-tab .panel-header .label,
+.pred-tab .panel-title {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-caps);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.calc-tab label.micro {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+.calc-tab select,
+.calc-tab input,
+.cand-tab input,
+.cand-tab select,
+.pred-tab input,
+.pred-tab select {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  padding: var(--pad-control) 9px;
+  font-size: var(--fs-heading);
+  font-family: var(--font-mono);
+}
+
+.calc-tab select {
+  margin: 5px 0 13px;
+}
+
+.calc-row {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 9px;
+  align-items: center;
+}
+
+.calc-row .vec-label {
+  width: 16px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-heading);
+}
+
+.calc-row .vec-label.a {
+  color: var(--accent);
+}
+
+.calc-row .vec-label.b {
+  color: var(--vector-b);
+}
+
+.calc-tab input.calc-input {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+.calc-result-box {
+  background: var(--bg-body);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.calc-result-box .label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.calc-result-value {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  color: var(--accent);
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+.calc-deg-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+}
+
+.calc-const-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-row);
+  font-family: var(--font-mono);
+  font-size: var(--fs-heading);
+}
+
+.calc-const-row .k {
+  color: var(--text-tertiary);
+}
+
+.calc-const-row .v {
+  color: var(--text-secondary);
+}
+
+/* ---- Candidates tab ---- */
+.cand-tab {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: var(--pad-screen);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+.cand-tab .panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cand-tab .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.cand-tab .panel-header .hint {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.cand-tab table,
+.pred-tab table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.cand-tab thead th,
+.pred-tab thead th {
+  padding: 9px 16px;
+  font-weight: 500;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.cand-tab tbody td,
+.pred-tab tbody td {
+  padding: 11px 16px;
+  border-top: 1px solid var(--border-row);
+}
+
+.cand-tab tbody tr:hover {
+  background: var(--bg-active);
+  cursor: pointer;
+}
+
+.cand-tab .form-row {
+  display: flex;
+  gap: 9px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.cand-tab .form-row input {
+  width: auto;
+  flex: 1;
+  min-width: 80px;
+}
+
+.cand-tab button,
+.pred-tab button {
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  padding: 9px 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.cand-tab button.danger {
+  color: var(--status-danger);
+}
+
+.cand-tab .grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 9px;
+  padding: 14px 16px;
+}
+
+.cand-tab .grid-form label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.cand-tab .search-footer {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.cand-tab .search-footnote {
+  padding: 10px 16px;
+  font-size: 10px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border-row);
+}
+
+.cand-tab .measurement-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+
+.cand-tab .measurement-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-tag);
+  padding: 5px 8px;
+}
+
+.cand-tab textarea.notes {
+  width: 100%;
+  min-height: 160px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  resize: vertical;
+}
+
+/* ---- Predictor tab ---- */
+.pred-tab {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: var(--pad-screen);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+.pred-tab .cards-row {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.pred-tab .card {
+  flex: 1;
+  min-width: 220px;
+  background: var(--bg-panel-header);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: 14px 16px;
+}
+
+.pred-tab .card.closest-approach {
+  flex: 1.4;
+  background: var(--bg-viewport);
+  border-color: #1f5c44;
+}
+
+.pred-tab .card-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--accent);
+  margin-top: 5px;
+}
+
+.pred-tab .card-sub {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.pred-tab .ca-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.pred-tab .ca-hero .value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  color: var(--status-warn);
+}
+
+.pred-tab .ca-hero .met {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.pred-tab .ca-status {
+  font-size: 10.5px;
+  color: var(--status-warn);
+  margin-top: 4px;
+}
+
+.pred-tab .form-panel {
+  background: var(--bg-panel-header);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pred-tab .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 9px;
+}
+
+.pred-tab .form-grid label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.pred-tab .burn-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pred-tab .burn-row input {
+  width: auto;
+  flex: 1;
+  min-width: 60px;
+}
+
+.pred-tab .progress-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.pred-tab .progress-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pred-tab .progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.pred-tab .table-header {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-caps);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pred-tab .table-wrap {
+  background: var(--bg-panel-header);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.pred-tab tbody td {
+  text-align: right;
+}
+
+.pred-tab tbody td:first-child {
+  text-align: left;
+}
+
+.pred-tab tbody tr.closest {
+  background: #181206;
+}
+
+.empty-hint {
+  font-size: var(--fs-body);
+  color: var(--text-faint);
+  padding: 16px;
+}
