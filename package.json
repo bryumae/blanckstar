@@ -13,7 +13,8 @@
     "test:watch": "vitest --config tests/vitest.config.ts",
     "test:e2e": "playwright test",
     "generate:ephemeris": "tsx scripts/generateEphemeris.ts",
-    "generate:stars": "tsx scripts/generateStarCatalog.ts"
+    "generate:stars": "tsx scripts/generateStarCatalog.ts",
+    "validate:scenarios": "tsx scripts/validateScenarios.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
