@@ -11,3 +11,10 @@
       - doppler effect calculations     
       - other calculations
 - when comes close to earth, use google maps API
+- reverse mouse
+- zoom reverse dicrection
+- sizes of planets
+- make the sun BIG
+- stars have the same apparent brightness
+- remove from catalogue
+- 
