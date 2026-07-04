@@ -6,6 +6,9 @@ import { mountTelescopeScreen } from './ui/telescope';
 import { mountSequenceScreen } from './ui/sequence';
 import type { ConsoleSink } from './ui/sequence';
 import { mountDataScreen } from './ui/data';
+import { createSequenceTabs } from './ui/sequence/tabs';
+import { createCandidateStore } from './ui/candidateStore';
+import { createMeasurementMirror } from './ui/data/measurementMirror';
 import { SandboxBridge } from './sandbox/bridge';
 import { isDebugEnabled } from './ui/debug/gate';
 import { loadEphemeris, loadStarCatalog } from './net/loadEphemeris';
@@ -40,7 +43,6 @@ async function main(): Promise<void> {
   const telescopeRoot = document.querySelector<HTMLElement>('#screen-telescope');
   const sequenceRoot = document.querySelector<HTMLElement>('#screen-sequence');
   const dataRoot = document.querySelector<HTMLElement>('#screen-data');
-  if (dataRoot) mountDataScreen(dataRoot);
 
   const fetchImpl: typeof fetch = (input, init) => fetch(input, init);
   const [ephemeris, starCatalog] = await Promise.all([
@@ -109,6 +111,23 @@ async function main(): Promise<void> {
     requestAnimationFrame(loop);
   }
 
+  // ---- shared UI stores + data screen ----
+  const candidates = createCandidateStore(localStorage);
+  const measurements = createMeasurementMirror();
+  addSimListener((e) => {
+    if (e.type === 'measurementAdded') measurements.add(e.measurement);
+    else if (e.type === 'ready') measurements.clear();
+  });
+  if (dataRoot) {
+    mountDataScreen(dataRoot, {
+      ephemeris,
+      send: post,
+      addSimListener,
+      removeSimListener,
+      candidates,
+    });
+  }
+
   // ---- sandbox bridge + sequence screen ----
   let sink: ConsoleSink | null = null;
   const bridge = new SandboxBridge({
@@ -139,6 +158,12 @@ async function main(): Promise<void> {
       bindConsole: (s) => {
         sink = s;
       },
+      extraTabs: createSequenceTabs({
+        ephemeris,
+        storage: localStorage,
+        candidates,
+        getMeasurements: () => measurements.all(),
+      }),
     });
   }
 
