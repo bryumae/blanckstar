@@ -1,0 +1,63 @@
+/*
+ * Shared design tokens for src/ui/ screens — copied verbatim from
+ * docs/design/tokens.css (the source of truth for the game's palette/type
+ * scale). No shared stylesheet existed yet when the Telescope screen
+ * (Phase 7 / issue #10) was built, so this file was added as that shared
+ * base; screen-specific stylesheets (e.g. src/ui/telescope/telescope.css)
+ * `@import` it. Orchestrator note: main.ts / index.html should load this
+ * once globally (or each mount*Screen call could import its own screen CSS,
+ * which already pulls this in transitively) — re-sync from
+ * docs/design/tokens.css if the design changes.
+ */
+:root {
+  /* Fonts — IBM Plex, loaded locally (no network during gameplay) */
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Backgrounds (dark mission-control theme) */
+  --bg-body: #0a0c11;
+  --bg-panel-header: #0c0f15;   /* header, nav rail, panel headers */
+  --bg-viewport: #080a0e;       /* console / telescope canvas */
+  --bg-viewport-deep: #05070b;
+  --bg-input: #141a23;
+  --bg-active: #111a24;         /* active nav row */
+
+  /* Borders / dividers */
+  --border-primary: #232c39;
+  --border-secondary: #2e3947;  /* inputs */
+  --border-row: #171d26;        /* table row dividers */
+
+  /* Text */
+  --text-primary: #e2e8f1;
+  --text-secondary: #cfd8e4;    /* values */
+  --text-tertiary: #94a1b3;     /* labels */
+  --text-muted: #5d6b7d;        /* muted labels, table headers */
+  --text-faint: #3f4a59;        /* hints, faint borders */
+
+  /* Accent + status */
+  --accent: #4cc9e0;            /* cyan — brand / interactive */
+  --status-ok: #57c98a;         /* nominal / locked / run */
+  --status-ok-bright: #7ee0a8;
+  --status-warn: #e0b455;       /* caution / scenario tag / estimate */
+  --status-warn-bright: #ffd15a;
+  --status-danger: #e0655f;     /* cancel / danger */
+  --status-danger-alt: #e0654a;
+  --vector-b: #a78bfa;          /* purple — calculator vector B */
+
+  /* Radii */
+  --radius-tag: 4px;            /* tags, pills */
+  --radius-control: 6px;        /* buttons, inputs, chips */
+  --radius-panel: 8px;          /* panels, cards, overlays (7-8px) */
+
+  /* Spacing conventions (mockup uses raw px) */
+  --pad-control: 8px;           /* compact controls: 8-9px */
+  --pad-panel: 14px;            /* panel padding: 12-16px */
+  --pad-screen: 20px;
+
+  /* Type scale (mockup values) */
+  --fs-micro: 9.5px;            /* letter-spaced micro labels (9-9.5px) */
+  --fs-body: 11px;              /* body/table text: 10-11.5px */
+  --fs-heading: 13px;           /* headings/values: 12-13px */
+  --fs-hero: 18px;              /* hero numbers (MET clock, range): 15-22px */
+  --ls-caps: 0.12em;            /* small-caps label letter-spacing: .1-.17em */
+}
