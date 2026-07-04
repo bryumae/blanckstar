@@ -45,20 +45,31 @@ export function yawPitchToLookVector(yaw: number, pitch: number): THREE.Vector3 
 export interface Scene {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
-  readonly renderer: THREE.WebGLRenderer;
+  // Null when a WebGL context can't be created (headless CI without WebGL2, or a
+  // machine with WebGL blocked). The scene graph, camera, and picking are all
+  // GL-independent, so the telescope still identifies/measures; only pixel
+  // rendering is skipped. This keeps a WebGL failure from aborting app boot (it
+  // used to throw here and leave every other screen unmounted).
+  readonly renderer: THREE.WebGLRenderer | null;
 }
 
 export function createScene(canvas: HTMLCanvasElement): Scene {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1e12);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  let renderer: THREE.WebGLRenderer | null = null;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('Telescope: WebGL unavailable, rendering disabled (identify/measure still work).', err);
+  }
   return { scene, camera, renderer };
 }
 
 export interface TelescopeViewport {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
-  readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: THREE.WebGLRenderer | null;
   getMode(): ViewMode;
   setMode(mode: ViewMode): void;
   getFovDeg(): number;
@@ -140,10 +151,10 @@ export function createTelescopeViewport(
       }
     },
     render(): void {
-      renderer.render(scene, camera);
+      renderer?.render(scene, camera);
     },
     dispose(): void {
-      renderer.dispose();
+      renderer?.dispose();
     },
   };
 }

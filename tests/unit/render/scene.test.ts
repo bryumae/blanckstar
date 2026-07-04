@@ -5,8 +5,25 @@ import {
   TELESCOPE_MIN_FOV_DEG,
   clampFov,
   clampPitch,
+  createScene,
   yawPitchToLookVector,
 } from '../../../src/render/scene';
+
+describe('createScene WebGL resilience', () => {
+  it('returns a null renderer (not a throw) when no WebGL context is available', () => {
+    // happy-dom has no WebGL, so this exercises the headless/blocked-WebGL path
+    // that previously threw and aborted app boot (see main.ts screen mounting).
+    const canvas = document.createElement('canvas');
+    let scene: ReturnType<typeof createScene> | undefined;
+    expect(() => {
+      scene = createScene(canvas);
+    }).not.toThrow();
+    expect(scene!.renderer).toBeNull();
+    // Scene graph + camera still exist for identify/measure/picking.
+    expect(scene!.camera).toBeTruthy();
+    expect(scene!.scene).toBeTruthy();
+  });
+});
 
 describe('clampFov', () => {
   it('forces outside mode to the fixed outside FOV regardless of input', () => {

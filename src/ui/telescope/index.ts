@@ -494,7 +494,7 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     canvas.height = Math.max(1, Math.floor(rect.height));
     viewport.camera.aspect = canvas.width / canvas.height;
     viewport.camera.updateProjectionMatrix();
-    viewport.renderer.setSize(canvas.width, canvas.height, false);
+    viewport.renderer?.setSize(canvas.width, canvas.height, false);
   }
   resizeCanvas();
   const resizeObserver = new ResizeObserver(resizeCanvas);
