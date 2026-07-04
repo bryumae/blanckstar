@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="about:blank"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plex-01.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plex-02.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plex-03.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plex-04.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plex-05.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plex-06.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plex-07.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plex-08.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plex-09.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plex-10.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plex-11.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plex-12.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plex-13.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plex-14.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plex-15.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-16.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-17.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-18.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-19.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-20.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-21.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-16.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-17.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-18.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-19.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-20.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-21.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-16.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-17.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-18.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-19.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-20.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-21.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-16.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-17.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-18.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-19.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-20.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("fonts/plex-21.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:#0a0c11;color:#e2e8f1;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;overflow:hidden}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#232c39;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  button{font-family:inherit;color:inherit;cursor:pointer}
+  @keyframes bpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(87,201,138,.5)}50%{opacity:.55;box-shadow:0 0 0 4px rgba(87,201,138,0)}}
+  @keyframes cblink{0%,49%{opacity:1}50%,100%{opacity:0}}
+</style>
+</helmet>
+
+<div style="height:100vh;display:flex;flex-direction:column;overflow:hidden">
+
+  <!-- ============ HEADER ============ -->
+  <header style="height:48px;flex:0 0 auto;display:flex;align-items:stretch;border-bottom:1px solid #232c39;background:#0c0f15">
+    <div style="width:220px;flex:0 0 auto;display:flex;align-items:center;gap:11px;padding:0 16px;border-right:1px solid #232c39">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" stroke="#4cc9e0" stroke-width="1.4"></circle><circle cx="12" cy="12" r="2.1" fill="#4cc9e0"></circle><path d="M12 2.8v3.4M12 17.8v3.4M2.8 12h3.4M17.8 12h3.4" stroke="#4cc9e0" stroke-width="1.4" stroke-linecap="round"></path></svg>
+      <div>
+        <div style="font-size:13px;font-weight:700;letter-spacing:.03em;line-height:1">BLANCKSTAR</div>
+        <div style="font-size:9px;letter-spacing:.17em;color:#5d6b7d;margin-top:3px">EBC · BACKUP COMPUTER</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:26px;padding:0 20px;border-right:1px solid #232c39">
+      <div>
+        <div style="font-size:9px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">MISSION TIME · UTC</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:2px;letter-spacing:.01em;white-space:nowrap">{{ utc }}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">MISSION ELAPSED</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;margin-top:2px;color:#4cc9e0;letter-spacing:.01em;white-space:nowrap">{{ met }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:0 20px;border-right:1px solid #232c39">
+      <div style="font-size:9px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">TIME WARP</div>
+      <div style="display:flex;gap:2px;background:#0a0c11;border:1px solid #232c39;border-radius:6px;padding:2px">
+        <sc-for list="{{ warps }}" as="w" hint-placeholder-count="6">
+          <button onclick="{{ w.set }}" style="{{ w.style }}">{{ w.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="margin-left:auto;display:flex;align-items:center;gap:18px;padding:0 20px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#57c98a;animation:bpulse 2.4s infinite"></span>
+        <span style="font-size:11px;color:#94a1b3">Earth beacon <b style="color:#57c98a;font-weight:600">LOCKED</b></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 11px;background:#141a23;border:1px solid #2e3947;border-radius:6px">
+        <span style="font-size:9px;letter-spacing:.14em;color:#5d6b7d;font-weight:600">SCENARIO</span>
+        <span style="font-size:11px;color:#e0b455;font-weight:600">SEED 2 · LONG WAY HOME</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ BODY ============ -->
+  <div style="flex:1 1 auto;display:flex;min-height:0">
+
+    <!-- NAV RAIL -->
+    <nav style="width:220px;flex:0 0 auto;border-right:1px solid #232c39;background:#0c0f15;display:flex;flex-direction:column">
+      <div style="padding:14px 12px 8px;font-size:9px;letter-spacing:.16em;color:#3f4a59;font-weight:600">PRIMARY SCREENS</div>
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <button onclick="{{ n.go }}" style="{{ n.style }}">
+          <span style="{{ n.iconStyle }}">{{ n.icon }}</span>
+          <span style="flex:1 1 auto;text-align:left">
+            <span style="display:block;font-size:12.5px;font-weight:600;letter-spacing:.01em">{{ n.label }}</span>
+            <span style="display:block;font-size:10px;color:#5d6b7d;margin-top:2px">{{ n.sub }}</span>
+          </span>
+          <span style="{{ n.dot }}"></span>
+        </button>
+      </sc-for>
+
+      <div style="margin-top:auto;border-top:1px solid #232c39;padding:12px 14px">
+        <div style="font-size:9px;letter-spacing:.16em;color:#3f4a59;font-weight:600;margin-bottom:10px">SYSTEM VITALS</div>
+        <sc-for list="{{ vitals }}" as="v" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
+            <span style="font-size:10.5px;color:#5d6b7d">{{ v.k }}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ v.c }}">{{ v.val }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+
+      <!-- ===== TELESCOPE ===== -->
+      <sc-if value="{{ isTele }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="Telescope" style="flex:1 1 auto;display:flex;min-height:0">
+        <div ref="{{ skyWrapRef }}" style="flex:1 1 auto;position:relative;min-width:0;background:#05070b;overflow:hidden">
+          <canvas ref="{{ skyRef }}" onmousedown="{{ onDown }}" onmousemove="{{ onMove }}" onmouseup="{{ onUp }}" onmouseleave="{{ onUp }}" onclick="{{ onSkyClick }}" onwheel="{{ onWheel }}" style="display:block;width:100%;height:100%;cursor:crosshair"></canvas>
+
+          <!-- overlay: mode + fov -->
+          <div style="position:absolute;top:14px;left:14px;display:flex;gap:8px">
+            <div style="display:flex;background:rgba(10,12,17,.82);border:1px solid #2e3947;border-radius:7px;overflow:hidden;backdrop-filter:blur(4px)">
+              <button onclick="{{ setOutside }}" style="{{ outsideBtn }}">OUTSIDE VIEW</button>
+              <button onclick="{{ setTeleMode }}" style="{{ teleBtn }}">TELESCOPE</button>
+            </div>
+          </div>
+          <div style="position:absolute;top:14px;right:14px;background:rgba(10,12,17,.82);border:1px solid #2e3947;border-radius:7px;padding:8px 12px;backdrop-filter:blur(4px);font-family:'IBM Plex Mono',monospace">
+            <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d">FIELD OF VIEW</div>
+            <div style="font-size:16px;color:#4cc9e0;margin-top:2px">{{ fovLabel }}</div>
+          </div>
+
+          <!-- fov slider (telescope only) -->
+          <sc-if value="{{ inTele }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:rgba(10,12,17,.82);border:1px solid #2e3947;border-radius:8px;padding:9px 16px;backdrop-filter:blur(4px)">
+            <span style="font-size:10px;letter-spacing:.12em;color:#5d6b7d">ZOOM</span>
+            <input type="range" min="0.5" max="45" step="0.1" value="{{ fov }}" oninput="{{ onFov }}" style="width:260px;accent-color:#4cc9e0">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a1b3;min-width:54px;text-align:right">{{ fovLabel }}</span>
+          </div>
+          </sc-if>
+
+          <div style="position:absolute;bottom:16px;left:16px;font-size:10.5px;color:#5d6b7d;background:rgba(10,12,17,.7);padding:5px 9px;border-radius:6px">drag to look · scroll to zoom · click a body or named star to identify</div>
+        </div>
+
+        <!-- telescope right column -->
+        <aside style="width:340px;flex:0 0 auto;border-left:1px solid #232c39;background:#0c0f15;overflow-y:auto;display:flex;flex-direction:column">
+          <div style="padding:13px 15px;border-bottom:1px solid #232c39">
+            <div style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">IDENTIFIED OBJECTS</div>
+            <div style="font-size:10px;color:#3f4a59;margin-top:3px">{{ idCount }} of {{ objTotal }} catalog targets tagged</div>
+          </div>
+          <div style="padding:8px 10px;border-bottom:1px solid #232c39">
+            <sc-for list="{{ idList }}" as="o" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px">
+                <span style="width:9px;height:9px;border-radius:{{ o.shape }};background:{{ o.color }};flex:0 0 auto"></span>
+                <span style="flex:1 1 auto;font-size:12px;color:#cfd8e4">{{ o.name }}</span>
+                <span style="font-size:10px;letter-spacing:.1em;color:#5d6b7d">{{ o.kind }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noneId }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:14px 8px;font-size:11px;color:#5d6b7d;text-align:center">Nothing identified yet — click objects in the view.</div>
+            </sc-if>
+          </div>
+
+          <!-- angular separation tool -->
+          <div style="padding:14px 15px;border-bottom:1px solid #232c39">
+            <div style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600;margin-bottom:11px">ANGULAR SEPARATION</div>
+            <div style="display:flex;gap:9px;align-items:center;margin-bottom:11px">
+              <select value="{{ sepA }}" onchange="{{ onSepA }}" style="flex:1;background:#141a23;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:8px 9px;font-size:11.5px;font-family:'IBM Plex Mono',monospace">
+                <option value="">— body A —</option>
+                <sc-for list="{{ idOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+              </select>
+              <span style="color:#5d6b7d;font-size:14px">↔</span>
+              <select value="{{ sepB }}" onchange="{{ onSepB }}" style="flex:1;background:#141a23;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:8px 9px;font-size:11.5px;font-family:'IBM Plex Mono',monospace">
+                <option value="">— body B —</option>
+                <sc-for list="{{ idOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+              </select>
+            </div>
+            <div style="background:#0a0c11;border:1px solid #232c39;border-radius:8px;padding:14px;text-align:center">
+              <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d">MEASURED θ = arccos(u_A · u_B)</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:500;margin-top:6px;color:{{ sepColor }}">{{ sepDeg }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6b7d;margin-top:2px">{{ sepRad }}</div>
+            </div>
+            <button onclick="{{ logSep }}" disabled="{{ sepDisabled }}" style="{{ logSepStyle }}">＋ Log measurement</button>
+          </div>
+
+          <div style="padding:14px 15px">
+            <div style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600;margin-bottom:10px">VIEW SENSORS</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a1b3">Star-tracker attitude</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#57c98a">LOCKED</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a1b3">Sun-direction (inertial)</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#cfd8e4">(−0.221, 0.964, 0.148)</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#94a1b3">Forward vector</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#cfd8e4">(−0.412, 0.883, 0.223)</span></div>
+          </div>
+        </aside>
+      </section>
+      </sc-if>
+
+      <!-- ===== SEQUENCE & CALCULATION ===== -->
+      <sc-if value="{{ isSeq }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Sequence &amp; Calculation" style="flex:1 1 auto;display:flex;flex-direction:column;min-height:0">
+        <div style="flex:0 0 auto;display:flex;gap:2px;padding:0 14px;border-bottom:1px solid #232c39;background:#0c0f15">
+          <sc-for list="{{ seqTabs }}" as="t" hint-placeholder-count="4">
+            <button onclick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+
+        <!-- SCRIPT CONSOLE tab -->
+        <sc-if value="{{ tabScript }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1 1 auto;display:flex;min-height:0">
+          <div style="flex:1 1 55%;display:flex;flex-direction:column;border-right:1px solid #232c39;min-width:0">
+            <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:9px 15px;border-bottom:1px solid #232c39;background:#0a0c11">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#cfd8e4">long_way_home.js</span>
+                <span style="font-size:9px;letter-spacing:.12em;color:#57c98a;border:1px solid #234;padding:2px 6px;border-radius:4px">SANDBOXED · WORKER</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button onclick="{{ runConsole }}" style="display:flex;align-items:center;gap:6px;background:#123a2c;color:#7ee0a8;border:1px solid #1f5c44;border-radius:6px;padding:6px 13px;font-size:11.5px;font-weight:600">▸ Run</button>
+                <button onclick="{{ stopConsole }}" style="background:#141a23;color:#94a1b3;border:1px solid #2e3947;border-radius:6px;padding:6px 12px;font-size:11.5px">■ Stop</button>
+              </div>
+            </div>
+            <div style="flex:1 1 auto;overflow:auto;background:#080a0e;padding:12px 0">
+              <sc-for list="{{ scriptLines }}" as="l" hint-placeholder-count="20">
+                <div style="display:flex;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.65">
+                  <span style="width:44px;flex:0 0 auto;text-align:right;padding-right:14px;color:#3f4a59;user-select:none">{{ l.n }}</span>
+                  <span style="color:{{ l.color }};white-space:pre">{{ l.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1 1 45%;display:flex;flex-direction:column;min-width:0;background:#080a0e">
+            <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:9px 15px;border-bottom:1px solid #232c39;background:#0a0c11">
+              <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">CONSOLE OUTPUT</span>
+              <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:{{ runColor }}">{{ runStatus }}</span>
+            </div>
+            <div ref="{{ consoleRef }}" style="flex:1 1 auto;overflow:auto;padding:12px 15px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.72">
+              <sc-for list="{{ visibleOut }}" as="o" hint-placeholder-count="0">
+                <div style="display:flex;gap:10px;margin-bottom:2px">
+                  <span style="color:#3f4a59;flex:0 0 auto">{{ o.prefix }}</span>
+                  <span style="color:{{ o.color }};white-space:pre-wrap">{{ o.text }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ idle }}" hint-placeholder-val="{{ true }}">
+                <div style="color:#3f4a59">Console idle. Press <span style="color:#7ee0a8">Run</span> to execute the sequence. <span style="animation:cblink 1.1s infinite">▋</span></div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- CALCULATOR tab -->
+        <sc-if value="{{ tabCalc }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1 1 auto;overflow:auto;padding:20px;display:grid;grid-template-columns:360px 1fr;gap:16px;align-content:start">
+          <div style="background:#0c0f15;border:1px solid #232c39;border-radius:8px;padding:16px">
+            <div style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600;margin-bottom:14px">VECTOR / SCALAR CALCULATOR</div>
+            <label style="font-size:10px;color:#5d6b7d">OPERATION</label>
+            <select value="{{ calcOp }}" onchange="{{ onCalcOp }}" style="width:100%;margin:5px 0 13px;background:#141a23;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:9px;font-size:12px;font-family:'IBM Plex Mono',monospace">
+              <option value="dot">dot(A, B)</option><option value="cross">cross(A, B)</option><option value="angle">angleBetween(A, B)</option><option value="normA">norm(A)</option><option value="normalizeA">normalize(A)</option>
+            </select>
+            <div style="display:flex;gap:9px;margin-bottom:9px"><span style="width:16px;font-family:'IBM Plex Mono',monospace;color:#4cc9e0;font-size:12px;padding-top:9px">A</span>
+              <input value="{{ ax }}" oninput="{{ onAx }}" style="{{ calcInput }}"><input value="{{ ay }}" oninput="{{ onAy }}" style="{{ calcInput }}"><input value="{{ az }}" oninput="{{ onAz }}" style="{{ calcInput }}"></div>
+            <div style="display:flex;gap:9px;margin-bottom:14px"><span style="width:16px;font-family:'IBM Plex Mono',monospace;color:#a78bfa;font-size:12px;padding-top:9px">B</span>
+              <input value="{{ bx }}" oninput="{{ onBx }}" style="{{ calcInput }}"><input value="{{ by }}" oninput="{{ onBy }}" style="{{ calcInput }}"><input value="{{ bz }}" oninput="{{ onBz }}" style="{{ calcInput }}"></div>
+            <div style="background:#0a0c11;border:1px solid #232c39;border-radius:8px;padding:14px">
+              <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d">RESULT</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;color:#4cc9e0;margin-top:6px;word-break:break-all">{{ calcResult }}</div>
+            </div>
+          </div>
+          <div style="background:#0c0f15;border:1px solid #232c39;border-radius:8px;padding:16px">
+            <div style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600;margin-bottom:12px">CONSTANTS · SI</div>
+            <sc-for list="{{ constants }}" as="c" hint-placeholder-count="8">
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #171d26">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#94a1b3">{{ c.k }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#cfd8e4">{{ c.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- CANDIDATES tab -->
+        <sc-if value="{{ tabCand }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1 1 auto;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div style="background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #232c39">
+              <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">SAVED STATE CANDIDATES · position + velocity estimates</span>
+              <span style="font-size:10px;color:#3f4a59">persisted · localStorage · unlimited</span>
+            </div>
+            <sc-for list="{{ candRows }}" as="c" hint-placeholder-count="3">
+                </sc-for><table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px">
+              <thead><tr style="color:#5d6b7d;text-align:left">
+                <th style="padding:9px 16px;font-weight:500;font-size:9.5px;letter-spacing:.1em">ID</th><th style="padding:9px 8px;font-weight:500;font-size:9.5px;letter-spacing:.1em">POSITION (km, ecliptic J2000)</th><th style="padding:9px 8px;font-weight:500;font-size:9.5px;letter-spacing:.1em">VELOCITY (km/s)</th><th style="padding:9px 8px;font-weight:500;font-size:9.5px;letter-spacing:.1em">SAVED</th><th style="padding:9px 16px;font-weight:500;font-size:9.5px;letter-spacing:.1em;text-align:right">RESIDUAL</th>
+              </tr></thead>
+              <tbody><tr onclick="{{ c.pick }}" style="{{ c.rowStyle }}">
+                  <td style="padding:11px 16px;color:{{ c.idColor }};font-weight:600">{{ c.id }}</td>
+                  <td style="padding:11px 8px;color:#cfd8e4">{{ c.pos }}</td>
+                  <td style="padding:11px 8px;color:#cfd8e4">{{ c.vel }}</td>
+                  <td style="padding:11px 8px;color:#5d6b7d">{{ c.saved }}</td>
+                  <td style="padding:11px 16px;text-align:right;color:{{ c.resColor }}">{{ c.res }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #232c39;font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">CANDIDATE-SEARCH TABLE · constraint residuals vs logged measurements <span style="color:#3f4a59;letter-spacing:0;font-weight:400"> — never labels a candidate correct</span></div>
+            <sc-for list="{{ searchRows }}" as="s" hint-placeholder-count="6">
+                </sc-for><table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+              <thead><tr style="color:#5d6b7d;text-align:right">
+                <th style="padding:8px 16px;font-weight:500;font-size:9.5px;text-align:left">#</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">X (km)</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">Y (km)</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">Z (km)</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">RADIO Δ (km)</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">ANGSEP Δ (°)</th><th style="padding:8px 16px;font-weight:500;font-size:9.5px">Σ MISMATCH</th>
+              </tr></thead>
+              <tbody><tr style="{{ s.rowStyle }}">
+                  <td style="padding:8px 16px;text-align:left;color:#94a1b3">{{ s.i }}</td>
+                  <td style="padding:8px 8px;text-align:right;color:#cfd8e4">{{ s.x }}</td><td style="padding:8px 8px;text-align:right;color:#cfd8e4">{{ s.y }}</td><td style="padding:8px 8px;text-align:right;color:#cfd8e4">{{ s.z }}</td>
+                  <td style="padding:8px 8px;text-align:right;color:{{ s.c1 }}">{{ s.r1 }}</td><td style="padding:8px 8px;text-align:right;color:{{ s.c2 }}">{{ s.r2 }}</td>
+                  <td style="padding:8px 16px;text-align:right;color:{{ s.ct }};font-weight:600">{{ s.tot }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- PREDICTOR tab -->
+        <sc-if value="{{ tabPred }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1 1 auto;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;gap:14px;align-items:stretch">
+            <div style="flex:1;background:#0c0f15;border:1px solid #232c39;border-radius:8px;padding:14px 16px">
+              <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d;font-weight:600">INPUT STATE</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:#4cc9e0;margin-top:5px">candidate C-07</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6b7d;margin-top:4px">r (1.052e8, −8.410e7, 3.90e6) km<br>v (18.30, 21.10, −0.42) km/s</div>
+            </div>
+            <div style="flex:1;background:#0c0f15;border:1px solid #232c39;border-radius:8px;padding:14px 16px">
+              <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d;font-weight:600">MODEL</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#cfd8e4;margin-top:5px">RK4 · Sun+Earth+Moon</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5d6b7d;margin-top:4px">horizon 30 d · step 2 d + 1 burn (SB-2)</div>
+            </div>
+            <div style="flex:1.4;background:#0a0c11;border:1px solid #1f5c44;border-radius:8px;padding:14px 16px">
+              <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d;font-weight:600">CLOSEST APPROACH TO EARTH</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:20px;color:#e0b455">1 834 200 km</span><span style="font-size:10px;color:#5d6b7d">@ MET +13d 04:11</span></div>
+              <div style="font-size:10.5px;color:#e0b455;margin-top:4px">▲ above R_SOI Earth (929 000 km) — capture not yet achieved</div>
+            </div>
+          </div>
+          <div style="background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+            <div style="padding:11px 16px;border-bottom:1px solid #232c39;display:flex;justify-content:space-between">
+              <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">TRAJECTORY PREDICTION · tables only</span>
+              <span style="font-size:10px;color:#3f4a59">predict(state, [SB-2], 30 d, step) — same engine as simulation, never validates truth</span>
+            </div>
+            <sc-for list="{{ predRows }}" as="p" hint-placeholder-count="10">
+                </sc-for><table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px">
+              <thead><tr style="color:#5d6b7d;text-align:right">
+                <th style="padding:9px 16px;font-weight:500;font-size:9.5px;text-align:left">MET</th><th style="padding:9px 10px;font-weight:500;font-size:9.5px">d · Earth (km)</th><th style="padding:9px 10px;font-weight:500;font-size:9.5px">d · Moon (km)</th><th style="padding:9px 10px;font-weight:500;font-size:9.5px">d · Mars (km)</th><th style="padding:9px 16px;font-weight:500;font-size:9.5px">v_rel Earth (km/s)</th>
+              </tr></thead>
+              <tbody><tr style="{{ p.rowStyle }}">
+                  <td style="padding:8px 16px;text-align:left;color:{{ p.tColor }}">{{ p.t }}</td>
+                  <td style="padding:8px 10px;text-align:right;color:{{ p.dColor }};font-weight:{{ p.dWeight }}">{{ p.dEarth }}</td>
+                  <td style="padding:8px 10px;text-align:right;color:#94a1b3">{{ p.dMoon }}</td>
+                  <td style="padding:8px 10px;text-align:right;color:#94a1b3">{{ p.dMars }}</td>
+                  <td style="padding:8px 16px;text-align:right;color:#cfd8e4">{{ p.vrel }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </sc-if>
+      </section>
+      </sc-if>
+
+      <!-- ===== DATA ===== -->
+      <sc-if value="{{ isData }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Data" style="flex:1 1 auto;overflow:auto;padding:16px;display:grid;grid-template-columns:repeat(12,1fr);gap:14px;align-content:start">
+
+        <!-- radio beacon -->
+        <div style="grid-column:span 4;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">RADIO · EARTH BEACON</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:10px;color:#57c98a"><span style="width:7px;height:7px;border-radius:50%;background:#57c98a;animation:bpulse 2.4s infinite"></span>LEVEL 1 LOCK</span>
+          </div>
+          <div style="padding:14px 15px">
+            <div style="font-size:9px;letter-spacing:.14em;color:#5d6b7d">RANGE = c · (t_received − t_sent)</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;color:#e2e8f1;margin:5px 0 2px">108 420 113 km</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5d6b7d">1.08420113 × 10¹¹ m · light-time 361.66 s</div>
+            <div style="height:1px;background:#171d26;margin:13px 0"></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a1b3">Direction (Earth @ t_sent)</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#cfd8e4">(−0.412, 0.883, 0.223)</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a1b3">Signal quality</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#57c98a">NOMINAL</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#94a1b3">Last lock</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#cfd8e4">MET +3d 14:22:01</span></div>
+            <button onclick="{{ newLock }}" style="width:100%;margin-top:14px;background:#141a23;border:1px solid #2e3947;border-radius:6px;padding:9px;font-size:11.5px;color:#4cc9e0;font-weight:600">radio.lockEarth() — new lock</button>
+          </div>
+        </div>
+
+        <!-- ship data -->
+        <div style="grid-column:span 4;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">SHIP DATA · self-knowledge only</div>
+          <div style="padding:8px 15px">
+            <sc-for list="{{ shipRows }}" as="r" hint-placeholder-count="7">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid #171d26">
+                <span style="font-size:11px;color:#94a1b3">{{ r.k }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:{{ r.c }}">{{ r.v }}</span>
+              </div>
+            </sc-for>
+            <div style="margin-top:10px;font-size:10px;color:#3f4a59">Position &amp; velocity are never shown — earn them through instruments.</div>
+          </div>
+        </div>
+
+        <!-- time controls -->
+        <div style="grid-column:span 4;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">TIME CONTROLS</div>
+          <div style="padding:14px 15px">
+            <div style="font-size:10px;color:#5d6b7d;margin-bottom:7px">WARP · substepped per tier</div>
+            <div style="display:flex;gap:3px;margin-bottom:16px">
+              <sc-for list="{{ warps }}" as="w" hint-placeholder-count="6"><button onclick="{{ w.set }}" style="{{ w.style2 }}">{{ w.label }}</button></sc-for>
+            </div>
+            <div style="font-size:10px;color:#5d6b7d;margin-bottom:7px">SKIP-TO-TIME · wait(seconds)</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input value="{{ skipN }}" oninput="{{ onSkipN }}" style="width:82px;background:#141a23;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:9px;font-size:12px;font-family:'IBM Plex Mono',monospace;text-align:right">
+              <select value="{{ skipUnit }}" onchange="{{ onSkipUnit }}" style="background:#141a23;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:9px;font-size:12px;font-family:'IBM Plex Mono',monospace"><option>hours</option><option>days</option></select>
+              <button onclick="{{ doSkip }}" style="flex:1;background:#141a23;border:1px solid #2e3947;border-radius:6px;color:#4cc9e0;font-size:11.5px;font-weight:600">▸▸ Advance</button>
+            </div>
+            <div style="font-size:10px;color:#3f4a59;line-height:1.6">Auto-interrupts on: scheduled burn start · SOI entry · win · failure · <span style="font-family:'IBM Plex Mono',monospace">wait()</span> completion.</div>
+          </div>
+        </div>
+
+        <!-- ephemeris -->
+        <div style="grid-column:span 7;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">EPHEMERIS · heliocentric ecliptic J2000 (km)</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3f4a59">@ {{ utc }}</span>
+          </div>
+          <sc-for list="{{ ephemRows }}" as="e" hint-placeholder-count="6">
+              </sc-for><table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px">
+            <thead><tr style="color:#5d6b7d;text-align:right">
+              <th style="padding:8px 15px;font-weight:500;font-size:9.5px;text-align:left">BODY</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">X</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">Y</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">Z</th><th style="padding:8px 15px;font-weight:500;font-size:9.5px">|r| (AU)</th>
+            </tr></thead>
+            <tbody><tr style="border-top:1px solid #171d26">
+                <td style="padding:9px 15px;text-align:left"><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:{{ e.color }}"></span><span style="color:#cfd8e4">{{ e.body }}</span></span></td>
+                <td style="padding:9px 8px;text-align:right;color:#94a1b3">{{ e.x }}</td><td style="padding:9px 8px;text-align:right;color:#94a1b3">{{ e.y }}</td><td style="padding:9px 8px;text-align:right;color:#94a1b3">{{ e.z }}</td>
+                <td style="padding:9px 15px;text-align:right;color:#cfd8e4">{{ e.r }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- scheduled burns -->
+        <div style="grid-column:span 5;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">SCHEDULED BURNS · point-then-burn</div>
+          <div style="padding:12px 15px;flex:1 1 auto">
+            <sc-for list="{{ burns }}" as="b" hint-placeholder-count="1">
+              <div style="border:1px solid #2e3947;border-radius:8px;padding:12px 13px;margin-bottom:10px;background:#0a0c11">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+                  <span style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4cc9e0;font-weight:600">{{ b.id }}</span><span style="font-size:9px;letter-spacing:.1em;color:#e0b455;border:1px solid #4a3d1f;padding:2px 6px;border-radius:4px">{{ b.status }}</span></span>
+                  <button onclick="{{ b.cancel }}" style="background:transparent;border:1px solid #4a2a2a;color:#e0655f;border-radius:5px;padding:4px 10px;font-size:10.5px">Cancel</button>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                  <div><span style="color:#5d6b7d">t_start </span><span style="color:#cfd8e4">{{ b.t }}</span></div>
+                  <div><span style="color:#5d6b7d">Δv </span><span style="color:#cfd8e4">{{ b.dv }}</span></div>
+                  <div><span style="color:#5d6b7d">throttle </span><span style="color:#cfd8e4">{{ b.throttle }}</span></div>
+                  <div><span style="color:#5d6b7d">duration </span><span style="color:#cfd8e4">{{ b.dur }}</span></div>
+                  <div style="grid-column:span 2"><span style="color:#5d6b7d">direction </span><span style="color:#cfd8e4">{{ b.dir }}</span></div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noBurns }}" hint-placeholder-val="{{ false }}"><div style="padding:16px;text-align:center;font-size:11px;color:#5d6b7d">No scheduled burns.</div></sc-if>
+          </div>
+        </div>
+
+        <!-- inserted-state analysis -->
+        <div style="grid-column:span 5;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">INSERTED-STATE ANALYSIS</span>
+            <div style="display:flex;gap:2px;background:#0a0c11;border:1px solid #232c39;border-radius:6px;padding:2px">
+              <button onclick="{{ setSolar }}" style="{{ solarBtn }}">SOLAR</button>
+              <button onclick="{{ setEarthRef }}" style="{{ earthBtn }}">EARTH</button>
+            </div>
+          </div>
+          <div style="padding:12px 15px">
+            <div style="display:inline-block;font-size:9px;letter-spacing:.1em;color:#e0b455;border:1px solid #4a3d1f;background:#1a1408;padding:3px 8px;border-radius:4px;margin-bottom:12px">ESTIMATE-DERIVED · from candidate C-07 · not ship truth</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px 20px">
+              <sc-for list="{{ elemRows }}" as="el" hint-placeholder-count="6">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #171d26;padding-bottom:7px">
+                  <span style="font-size:11px;color:#94a1b3">{{ el.k }}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#cfd8e4">{{ el.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:10px;color:#3f4a59;margin-top:12px">Periapsis / apoapsis are center-distances; inclination against the {{ planeLabel }} plane.</div>
+          </div>
+        </div>
+
+        <!-- measurement log -->
+        <div style="grid-column:span 12;background:#0c0f15;border:1px solid #232c39;border-radius:8px;overflow:hidden">
+          <div style="padding:11px 15px;border-bottom:1px solid #232c39;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;letter-spacing:.15em;color:#5d6b7d;font-weight:600">MEASUREMENT LOG · append-only · this run</span>
+            <span style="font-size:10.5px;color:#4cc9e0;cursor:default">↓ export as text</span>
+          </div>
+          <sc-for list="{{ logRows }}" as="m" hint-placeholder-count="8">
+              </sc-for><table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px">
+            <thead><tr style="color:#5d6b7d;text-align:left">
+              <th style="padding:8px 15px;font-weight:500;font-size:9.5px">MET</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">TYPE</th><th style="padding:8px 8px;font-weight:500;font-size:9.5px">INSTRUMENT</th><th style="padding:8px 15px;font-weight:500;font-size:9.5px">READOUT</th>
+            </tr></thead>
+            <tbody><tr style="border-top:1px solid #171d26">
+                <td style="padding:8px 15px;color:#94a1b3;white-space:nowrap">{{ m.t }}</td>
+                <td style="padding:8px 8px"><span style="font-size:9.5px;letter-spacing:.06em;color:{{ m.tagColor }};border:1px solid {{ m.tagBorder }};padding:2px 7px;border-radius:4px">{{ m.type }}</span></td>
+                <td style="padding:8px 8px;color:#94a1b3">{{ m.inst }}</td>
+                <td style="padding:8px 15px;color:#cfd8e4">{{ m.readout }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;defaultScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;telescope&quot;,&quot;seq&quot;,&quot;data&quot;],&quot;default&quot;:&quot;telescope&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Session&quot;},&quot;clockRunning&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Session&quot;},&quot;starDensity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1500,&quot;min&quot;:400,&quot;max&quot;:3000,&quot;step&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Telescope&quot;}}">
+class Component extends DCLogic {
+  consoleRef = React.createRef();
+  skyEl = null; wrapEl = null;
+  setSky = (el)=>{ this.skyEl = el; if(el) this.resizeCanvas(); };
+  setWrap = (el)=>{
+    if(this._ro){ this._ro.disconnect(); this._ro = null; }
+    this.wrapEl = el;
+    if(el){ this._ro = new ResizeObserver(()=>this.resizeCanvas()); this._ro.observe(el); this.resizeCanvas(); }
+  };
+
+  state = {
+    screen: 'telescope',
+    warpIdx: 1,            // 0 pause,1 =1x,...
+    met: 3*86400 + 14*3600 + 22*60 + 1,
+    teleMode: 'telescope',
+    fov: 8,
+    identified: ['earth','sun','mars'],
+    sepA: 'earth', sepB: 'mars',
+    seqTab: 'script',
+    outCount: 0, running: false,
+    calcOp: 'dot',
+    ax:'-0.412', ay:'0.883', az:'0.223', bx:'-0.221', by:'0.964', bz:'0.148',
+    insRef: 'solar',
+    skipN: '12', skipUnit: 'hours',
+    cancelled: false,
+    userSeps: [],
+  };
+
+  EPOCH = Date.UTC(2026,8,1,0,0,0)/1000;
+  WARPS = [{label:'⏸',f:0},{label:'1×',f:1},{label:'10×',f:10},{label:'100×',f:100},{label:'1k',f:1000},{label:'10k',f:10000}];
+
+  // ---------- lifecycle ----------
+  componentDidMount(){
+    this.buildSky();
+    this.cam = { yaw: 0, pitch: 0 };
+    this.aimAt('earth');
+    this._tick = setInterval(()=>{
+      const f = this.WARPS[this.state.warpIdx].f;
+      if(f>0 && (this.props.clockRunning ?? true)) this.setState(s=>({met: s.met + 0.25*f}));
+    }, 250);
+    const ds=this.props.defaultScreen;
+    if(ds && ds!==this.state.screen) this.setState({screen:ds});
+    window.addEventListener('resize', this._rz = ()=>this.resizeCanvas());
+  }
+  componentWillUnmount(){ clearInterval(this._tick); clearInterval(this._out); if(this._ro)this._ro.disconnect(); window.removeEventListener('resize',this._rz); }
+  componentDidUpdate(pp, ps){
+    if(this.state.running && ps.outCount!==this.state.outCount && this.consoleRef.current){
+      this.consoleRef.current.scrollTop = this.consoleRef.current.scrollHeight;
+    }
+  }
+
+  // ---------- vec math ----------
+  n(v){const m=Math.hypot(v.x,v.y,v.z)||1;return {x:v.x/m,y:v.y/m,z:v.z/m};}
+  dot(a,b){return a.x*b.x+a.y*b.y+a.z*b.z;}
+  cross(a,b){return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x};}
+
+  // ---------- sky ----------
+  buildSky(){
+    const named = [
+      ['sirius','Sirius',-0.62,0.55,-0.30,-1.46,'#cfe0ff'],
+      ['vega','Vega',0.18,0.72,0.66,0.03,'#dbe6ff'],
+      ['betelgeuse','Betelgeuse',-0.30,0.88,0.10,0.45,'#ffb27a'],
+      ['rigel','Rigel',-0.44,0.80,-0.22,0.13,'#cfe0ff'],
+      ['aldebaran','Aldebaran',-0.08,0.94,-0.20,0.86,'#ffcf9a'],
+      ['antares','Antares',0.55,0.30,0.72,1.06,'#ff9d7a'],
+      ['pollux','Pollux',-0.52,0.70,0.40,1.14,'#ffe0b0'],
+      ['arcturus','Arcturus',0.42,0.20,0.85,-0.05,'#ffd9a0'],
+      ['capella','Capella',-0.36,0.66,0.62,0.08,'#fff0cf'],
+      ['procyon','Procyon',-0.64,0.60,0.10,0.34,'#eef3ff'],
+      ['altair','Altair',0.44,0.52,0.68,0.76,'#eef3ff'],
+      ['spica','Spica',0.30,0.10,0.94,0.98,'#dbe6ff'],
+      ['deneb','Deneb',0.28,0.60,0.74,1.25,'#eef3ff'],
+      ['fomalhaut','Fomalhaut',0.70,0.35,-0.60,1.16,'#eef3ff'],
+    ];
+    this.objs = [];
+    named.forEach(a=>this.objs.push({id:a[0],name:a[1],dir:this.n({x:a[2],y:a[3],z:a[4]}),mag:a[5],color:a[6],type:'star'}));
+    const bodies = [
+      ['sun','Sun',{x:-0.221,y:0.964,z:0.148},0.53,-26.7,'#ffd15a','planet'],
+      ['earth','Earth',{x:-0.412,y:0.883,z:0.223},0.0007,-3.9,'#5aa0ff','planet'],
+      ['moon','Moon',{x:-0.402,y:0.889,z:0.219},0.0006,-1.2,'#c7ccd6','planet'],
+      ['mars','Mars',{x:0.36,y:0.62,z:-0.70},0.004,0.9,'#e0654a','planet'],
+      ['venus','Venus',{x:-0.58,y:0.42,z:0.70},0.011,-4.1,'#ffe6a8','planet'],
+      ['jupiter','Jupiter',{x:0.70,y:-0.10,z:0.71},0.008,-2.2,'#e8c69a','planet'],
+    ];
+    bodies.forEach(a=>this.objs.push({id:a[0],name:a[1],dir:this.n(a[2]),ang:a[3],mag:a[4],color:a[5],type:'body'}));
+    this.bodyIds = bodies.map(b=>b[0]);
+    // field stars
+    let s=1337; const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
+    this.field=[];
+    const N=this.props.starDensity ?? 1500;
+    for(let i=0;i<N;i++){
+      const u=rnd()*2-1, th=rnd()*Math.PI*2, r=Math.sqrt(1-u*u);
+      this.field.push({dir:{x:r*Math.cos(th),y:r*Math.sin(th),z:u}, mag:2.5+rnd()*4.2, c:rnd()});
+    }
+  }
+  objById(id){return this.objs.find(o=>o.id===id);}
+  aimAt(id){const o=this.objById(id);if(!o)return;const d=o.dir;this.cam={yaw:Math.atan2(d.y,d.x),pitch:Math.asin(Math.max(-1,Math.min(1,d.z)))};}
+
+  fovRad(){ return (this.state.teleMode==='outside'?72:this.state.fov)*Math.PI/180; }
+  basis(){
+    const {yaw,pitch}=this.cam;
+    const fwd={x:Math.cos(pitch)*Math.cos(yaw),y:Math.cos(pitch)*Math.sin(yaw),z:Math.sin(pitch)};
+    let right=this.cross(fwd,{x:0,y:0,z:1}); const rm=Math.hypot(right.x,right.y,right.z)||1; right={x:right.x/rm,y:right.y/rm,z:right.z/rm};
+    const up=this.cross(right,fwd);
+    return {fwd,right,up};
+  }
+  project(v,b){
+    const z=this.dot(v,b.fwd); if(z<=0.0001)return null;
+    const x=this.dot(v,b.right), y=this.dot(v,b.up);
+    const f=(this.ch/2)/Math.tan(this.fovRad()/2);
+    return {sx:this.cw/2+(x/z)*f, sy:this.ch/2-(y/z)*f, z};
+  }
+
+  resizeCanvas(){
+    const wrap=this.wrapEl, cv=this.skyEl; if(!wrap||!cv)return;
+    const w=wrap.clientWidth, h=wrap.clientHeight; if(w===0||h===0)return;
+    const dpr=window.devicePixelRatio||1;
+    this.cw=w; this.ch=h;
+    cv.width=w*dpr; cv.height=h*dpr;
+    this.ctx=cv.getContext('2d'); this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    this.draw();
+  }
+
+  draw(){
+    const ctx=this.ctx; if(!ctx)return;
+    ctx.clearRect(0,0,this.cw,this.ch);
+    // bg
+    const g=ctx.createRadialGradient(this.cw/2,this.ch/2,0,this.cw/2,this.ch/2,Math.max(this.cw,this.ch)*0.7);
+    g.addColorStop(0,'#070a10'); g.addColorStop(1,'#04060a');
+    ctx.fillStyle=g; ctx.fillRect(0,0,this.cw,this.ch);
+    const b=this.basis();
+    // field stars
+    for(const st of this.field){
+      const p=this.project(st.dir,b); if(!p)continue;
+      if(p.sx<-5||p.sx>this.cw+5||p.sy<-5||p.sy>this.ch+5)continue;
+      const r=Math.max(0.35,(6.7-st.mag)*0.33);
+      ctx.globalAlpha=Math.min(1,0.35+(6.7-st.mag)*0.13);
+      ctx.fillStyle= st.c>0.85?'#bcd0ff':st.c<0.18?'#ffdcc0':'#f2f5ff';
+      ctx.beginPath(); ctx.arc(p.sx,p.sy,r,0,7); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    // named objects
+    const ided=this.state.identified;
+    for(const o of this.objs){
+      const p=this.project(o.dir,b); if(!p)continue;
+      if(o.type==='star'){
+        const r=Math.max(0.9,(2.2-o.mag)*0.9+1.1);
+        ctx.fillStyle=o.color; ctx.beginPath(); ctx.arc(p.sx,p.sy,r,0,7); ctx.fill();
+        ctx.globalAlpha=0.5; ctx.beginPath(); ctx.arc(p.sx,p.sy,r+2.4,0,7); ctx.fillStyle=o.color; ctx.fill(); ctx.globalAlpha=1;
+      } else {
+        const angPx=Math.max(2.6,(o.ang*Math.PI/180)/this.fovRad()*this.ch/2);
+        const glow=angPx*(o.id==='sun'?4.5:3.2);
+        const rg=ctx.createRadialGradient(p.sx,p.sy,0,p.sx,p.sy,glow);
+        rg.addColorStop(0,o.color); rg.addColorStop(0.2,o.color); rg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.globalAlpha=o.id==='sun'?0.9:0.55; ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(p.sx,p.sy,glow,0,7); ctx.fill(); ctx.globalAlpha=1;
+        ctx.fillStyle=o.color; ctx.beginPath(); ctx.arc(p.sx,p.sy,angPx,0,7); ctx.fill();
+      }
+      // labels for identified
+      if(ided.includes(o.id)){
+        const isSel=o.id===this.state.sepA||o.id===this.state.sepB;
+        ctx.strokeStyle=isSel?'#4cc9e0':'rgba(150,170,200,.55)'; ctx.lineWidth=isSel?1.4:1;
+        const rr=(o.type==='body'?Math.max(6,(o.ang*Math.PI/180)/this.fovRad()*this.ch/2+5):6);
+        ctx.beginPath(); ctx.arc(p.sx,p.sy,rr,0,7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.sx+rr,p.sy); ctx.lineTo(p.sx+rr+9,p.sy); ctx.stroke();
+        ctx.font="12px 'IBM Plex Mono', monospace"; ctx.fillStyle=isSel?'#7fe3f2':'#aebccd';
+        ctx.textBaseline='middle'; ctx.fillText(o.name.toUpperCase(),p.sx+rr+14,p.sy);
+      }
+    }
+    // separation line
+    const A=this.objById(this.state.sepA), B=this.objById(this.state.sepB);
+    if(A&&B&&this.state.identified.includes(A.id)&&this.state.identified.includes(B.id)){
+      const pa=this.project(A.dir,b), pb=this.project(B.dir,b);
+      if(pa&&pb){ ctx.strokeStyle='rgba(76,201,224,.55)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(pa.sx,pa.sy); ctx.lineTo(pb.sx,pb.sy); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    // reticle
+    if(this.state.teleMode==='telescope'){
+      ctx.strokeStyle='rgba(76,201,224,.45)'; ctx.lineWidth=1;
+      const cx=this.cw/2, cy=this.ch/2, gap=9, len=22;
+      ctx.beginPath(); ctx.moveTo(cx-gap-len,cy);ctx.lineTo(cx-gap,cy);ctx.moveTo(cx+gap,cy);ctx.lineTo(cx+gap+len,cy);
+      ctx.moveTo(cx,cy-gap-len);ctx.lineTo(cx,cy-gap);ctx.moveTo(cx,cy+gap);ctx.lineTo(cx,cy+gap+len); ctx.stroke();
+      ctx.strokeStyle='rgba(76,201,224,.22)'; ctx.beginPath(); ctx.arc(cx,cy,64,0,7); ctx.stroke();
+    }
+  }
+
+  // ---------- pointer ----------
+  onDown=(e)=>{ this._drag={x:e.clientX,y:e.clientY,moved:0,yaw:this.cam.yaw,pitch:this.cam.pitch}; };
+  onMove=(e)=>{ if(!this._drag)return; const dx=e.clientX-this._drag.x, dy=e.clientY-this._drag.y;
+    this._drag.moved+=Math.abs(dx)+Math.abs(dy);
+    const k=this.fovRad()/this.ch;
+    this.cam.yaw=this._drag.yaw-dx*k; this.cam.pitch=Math.max(-1.5,Math.min(1.5,this._drag.pitch+dy*k)); this.draw(); };
+  onUp=()=>{ setTimeout(()=>{this._drag=null;},0); };
+  onWheel=(e)=>{ e.preventDefault(); if(this.state.teleMode!=='telescope')return;
+    let f=this.state.fov*(e.deltaY>0?1.12:0.89); f=Math.max(0.5,Math.min(45,f)); this.setState({fov:+f.toFixed(1)},()=>this.draw()); };
+  onSkyClick=(e)=>{ if(this._drag&&this._drag.moved>5)return;
+    const cv=this.skyEl; if(!cv)return; const rect=cv.getBoundingClientRect(); const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const b=this.basis(); let best=null,bd=18;
+    for(const o of this.objs){ const p=this.project(o.dir,b); if(!p)continue; const d=Math.hypot(p.sx-mx,p.sy-my); if(d<bd){bd=d;best=o;} }
+    if(best&&!this.state.identified.includes(best.id)) this.setState(s=>({identified:[...s.identified,best.id]}),()=>this.draw());
+  };
+
+  // ---------- handlers ----------
+  setWarp=(i)=>()=>this.setState({warpIdx:i});
+  go=(sc)=>()=>this.setState({screen:sc});
+  setMode=(m)=>()=>this.setState({teleMode:m},()=>this.draw());
+  onFov=(e)=>this.setState({fov:+e.target.value},()=>this.draw());
+  setTab=(t)=>()=>this.setState({seqTab:t});
+  onSepA=(e)=>this.setState({sepA:e.target.value},()=>this.draw());
+  onSepB=(e)=>this.setState({sepB:e.target.value},()=>this.draw());
+  logSep=()=>{ const v=this.sepValue(); if(v==null)return;
+    const A=this.objById(this.state.sepA), B=this.objById(this.state.sepB);
+    this.setState(s=>({userSeps:[{t:this.fmtMET(s.met),a:A.name,b:B.name,deg:(v*180/Math.PI).toFixed(3)},...s.userSeps]})); };
+  runConsole=()=>{ this.setState({running:true,outCount:0});
+    clearInterval(this._out); const total=this.outLines().length;
+    this._out=setInterval(()=>{ this.setState(s=>{ if(s.outCount>=total){clearInterval(this._out);return{running:false};} return {outCount:s.outCount+1}; }); },260); };
+  stopConsole=()=>{ clearInterval(this._out); this.setState({running:false}); };
+  onCalcOp=(e)=>this.setState({calcOp:e.target.value});
+  onAx=(e)=>this.setState({ax:e.target.value}); onAy=(e)=>this.setState({ay:e.target.value}); onAz=(e)=>this.setState({az:e.target.value});
+  onBx=(e)=>this.setState({bx:e.target.value}); onBy=(e)=>this.setState({by:e.target.value}); onBz=(e)=>this.setState({bz:e.target.value});
+  setInsRef=(r)=>()=>this.setState({insRef:r});
+  onSkipN=(e)=>this.setState({skipN:e.target.value}); onSkipUnit=(e)=>this.setState({skipUnit:e.target.value});
+  doSkip=()=>{ const n=parseFloat(this.state.skipN)||0; const sec=n*(this.state.skipUnit==='days'?86400:3600); this.setState(s=>({met:s.met+sec})); };
+  pickCand=()=>{};
+  cancelBurn=()=>this.setState({cancelled:true});
+  newLock=()=>this.setState({screen:'data'});
+
+  // ---------- formatters ----------
+  fmtMET(sec){ sec=Math.floor(sec); const d=Math.floor(sec/86400); sec-=d*86400; const h=Math.floor(sec/3600);sec-=h*3600;const m=Math.floor(sec/60);const s=sec-m*60;
+    return `+${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+  fmtUTC(sec){ const d=new Date((this.EPOCH+sec)*1000); const p=n=>String(n).padStart(2,'0');
+    return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`; }
+
+  sepValue(){ const A=this.objById(this.state.sepA), B=this.objById(this.state.sepB); if(!A||!B||A.id===B.id)return null;
+    return Math.acos(Math.max(-1,Math.min(1,this.dot(A.dir,B.dir)))); }
+  sepDeg(a,b){ const A=this.objById(a),B=this.objById(b); return (Math.acos(Math.max(-1,Math.min(1,this.dot(A.dir,B.dir))))*180/Math.PI).toFixed(3); }
+  navIcon(id){
+    const e=React.createElement, mk=(...ch)=>e('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','strokeWidth':1.6,'strokeLinecap':'round','strokeLinejoin':'round'},...ch);
+    if(id==='telescope') return mk(e('path',{key:1,d:'M3 15l7-2'}),e('path',{key:2,d:'M9.5 13.2l3.2-7.6 4.6 1.9-3.2 7.6z'}),e('path',{key:3,d:'M13 16l3 5M9 14l2 5'}));
+    if(id==='seq') return mk(e('path',{key:1,d:'M8 8l-4 4 4 4'}),e('path',{key:2,d:'M16 8l4 4-4 4'}),e('path',{key:3,d:'M13 6l-2 12'}));
+    return mk(e('ellipse',{key:1,cx:12,cy:6,rx:7,ry:2.6}),e('path',{key:2,d:'M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6'}),e('path',{key:3,d:'M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6'}));
+  }
+
+  calc(){
+    const A={x:+this.state.ax,y:+this.state.ay,z:+this.state.az}, B={x:+this.state.bx,y:+this.state.by,z:+this.state.bz};
+    const f=n=>Number.isFinite(n)?(Math.abs(n)<1e-4||Math.abs(n)>1e6?n.toExponential(4):n.toFixed(5)):'—';
+    switch(this.state.calcOp){
+      case 'dot': return f(this.dot(A,B));
+      case 'cross': {const c=this.cross(A,B);return `(${f(c.x)}, ${f(c.y)}, ${f(c.z)})`;}
+      case 'angle': {const d=this.dot(A,B)/((Math.hypot(A.x,A.y,A.z)||1)*(Math.hypot(B.x,B.y,B.z)||1));return `${f(Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI)}°`;}
+      case 'normA': return f(Math.hypot(A.x,A.y,A.z));
+      case 'normalizeA': {const nn=this.n(A);return `(${f(nn.x)}, ${f(nn.y)}, ${f(nn.z)})`;}
+    }
+  }
+
+  outLines(){
+    const c=(t,text,color,prefix)=>({text,color:color||'#cfd8e4',prefix:prefix||''});
+    return [
+      c(0,'▸ run  long_way_home.js','#7ee0a8','$'),
+      c(0,'sim time  2026-09-04T14:22:01Z   (MET +3d 14:22:01)','#5d6b7d','·'),
+      c(0,'radio.lockEarth() → range 108 420 113 km   lt 361.66 s','#cfd8e4','·'),
+      c(0,'sensors.sunDirection() → (−0.221, 0.964, 0.148)','#cfd8e4','·'),
+      c(0,'telescope.angularSeparation(earth, mars) → '+this.sepDeg('earth','mars')+'°','#cfd8e4','·'),
+      c(0,'predict(C-07, [], 30 d, step 1 d) → 30 samples','#cfd8e4','·'),
+      c(0,'closest approach  1 834 200 km  @ MET +13d 04:11:38','#57c98a','✓'),
+      c(0,'above R_SOI Earth (929 000 km) — capture NOT achieved','#e0b455','!'),
+      c(0,'ship.scheduleBurn → SB-2 armed  t=+13d 04:12:00  θ=640 s  Δv≈0.192 km/s','#4cc9e0','»'),
+      c(0,'script finished — 14 ms, 0 errors','#7ee0a8','✓'),
+    ];
+  }
+
+  scriptSrc(){
+    return [
+      ['// long_way_home.js — fix → predict → correct','c'],
+      ['const t0 = time.now();','k'],
+      ['const lock = radio.lockEarth();','k'],
+      ['log("range km", (lock.rangeMeters / 1e3).toFixed(0));','k'],
+      ['','b'],
+      ['const sun = sensors.sunDirection();','k'],
+      ['const sep = telescope.angularSeparation("earth", "mars");','k'],
+      ['log("earth-mars sep °", (sep * 180 / Math.PI).toFixed(3));','k'],
+      ['','b'],
+      ['// evaluate saved candidate C-07','c'],
+      ['const cand = {','k'],
+      ['  position: vec(1.052e11, -8.410e10, 3.90e9),','k'],
+      ['  velocity: vec(1.830e4, 2.110e4, -4.20e2),','k'],
+      ['  epoch: t0','k'],
+      ['};','k'],
+      ['const traj = predict(cand, [], 30 * 86400, 86400);','k'],
+      ['','b'],
+      ['let min = Infinity, tMin = 0;','k'],
+      ['for (const s of traj) {','k'],
+      ['  const d = norm(sub(s.position, ephemeris.position("earth", s.t)));','k'],
+      ['  if (d < min) { min = d; tMin = s.t; }','k'],
+      ['}','k'],
+      ['log("closest approach km", (min / 1e3).toFixed(0));','k'],
+      ['','b'],
+      ['// arm the capture-correction burn','c'],
+      ['ship.scheduleBurn(tMin - 6 * 3600,','k'],
+      ['  normalize(vec(-0.412, 0.883, 0.223)), 0.6, 640);','k'],
+    ];
+  }
+
+  // ---------- render ----------
+  renderVals(){
+    const S=this.state;
+    const colFor=k=>({c:'#e2e8f1'});
+    // header warps
+    const warpBtn=(i,two)=>{ const on=S.warpIdx===i;
+      const base=`border:none;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:${two?'6px 0':'5px 9px'};min-width:${two?'0':'34px'};${two?'flex:1;':''}`;
+      return base + (on?`background:${i===0?'#3a2a12':'#123a2c'};color:${i===0?'#e0b455':'#7ee0a8'};`:'background:transparent;color:#5d6b7d;'); };
+    const warps=this.WARPS.map((w,i)=>({label:w.label,set:this.setWarp(i),style:warpBtn(i,false),style2:warpBtn(i,true)}));
+
+    // nav
+    const navDef=[['telescope','Telescope','Outside view · identify · sep'],['seq','Sequence & Calc','Script · predict · candidates'],['data','Data','Radio · log · ship · time']];
+    const nav=navDef.map(n=>{ const on=S.screen===n[0];
+      return {id:n[0],label:n[1],sub:n[2],go:this.go(n[0]),icon:this.navIcon(n[0]),
+        iconStyle:`width:20px;flex:0 0 auto;display:flex;justify-content:center;color:${on?'#4cc9e0':'#5d6b7d'}`,
+        style:`display:flex;align-items:center;gap:12px;width:100%;padding:11px 15px 11px ${on?'12px':'15px'};background:${on?'#111a24':'transparent'};border:none;border-left:3px solid ${on?'#4cc9e0':'transparent'};`,
+        dot:`width:6px;height:6px;border-radius:50%;background:${on?'#4cc9e0':'transparent'};flex:0 0 auto`}; });
+
+    const vitals=[
+      {k:'Engine',val:'IDLE',c:'#94a1b3'},
+      {k:'Δv spent',val:'1.284 km/s',c:'#cfd8e4'},
+      {k:'Max accel',val:'0.50 m/s²',c:'#cfd8e4'},
+      {k:'Beacon',val:'LOCKED',c:'#57c98a'},
+      {k:'Sim',val:'DETERMINISTIC',c:'#4cc9e0'},
+    ];
+
+    // telescope
+    const idList=S.identified.map(id=>{const o=this.objById(id);return {name:o.name,color:o.color,kind:o.type==='body'?'BODY':'STAR',shape:o.type==='body'?'50%':'1px'};});
+    const idOptions=S.identified.map(id=>{const o=this.objById(id);return {id,name:o.name};});
+    const sv=this.sepValue();
+    const teleBtnStyle=on=>`border:none;background:${on?'#123a2c':'transparent'};color:${on?'#7ee0a8':'#8a96a6'};font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:7px 13px;`;
+
+    // seq tabs
+    const tabDef=[['script','Script Console'],['calc','Calculator'],['cand','Candidates'],['pred','Trajectory Predictor']];
+    const seqTabs=tabDef.map(t=>{const on=S.seqTab===t[0];return {label:t[1],go:this.setTab(t[0]),
+      style:`background:transparent;border:none;border-bottom:2px solid ${on?'#4cc9e0':'transparent'};color:${on?'#e2e8f1':'#5d6b7d'};font-size:12px;font-weight:${on?600:500};padding:12px 15px;`};});
+
+    const lineColor={c:'#5d6b7d',k:'#cfd8e4',b:'#cfd8e4',s:'#7ee0a8'};
+    const scriptLines=this.scriptSrc().map((l,i)=>({n:i+1,text:l[0],color:l[1]==='c'?'#5d6b7d':(l[1]==='b'?'#cfd8e4':'#c9d4e2')}));
+    const allOut=this.outLines();
+    const visibleOut=allOut.slice(0,S.outCount);
+
+    const calcInput=`flex:1;min-width:0;background:#0a0c11;color:#e2e8f1;border:1px solid #2e3947;border-radius:6px;padding:8px 9px;font-size:12px;font-family:'IBM Plex Mono',monospace;text-align:right`;
+    const constants=[
+      {k:'C',v:'2.998e8 m/s'},{k:'MU_SUN',v:'1.327e20'},{k:'MU_EARTH',v:'3.986e14'},{k:'MU_MOON',v:'4.903e12'},
+      {k:'R_EARTH',v:'6.371e6 m'},{k:'R_MOON',v:'1.737e6 m'},{k:'R_SOI_EARTH',v:'9.290e8 m'},{k:'AU',v:'1.496e11 m'},{k:'SHIP_MASS_KG',v:'12 000'},
+    ];
+
+    // candidates
+    const cd=[
+      ['C-05','(9.81e7, −7.92e7, 3.4e6)','(17.9, 20.4, −0.5)','+2d 21:05','2.1e6'],
+      ['C-07','(1.052e8, −8.41e7, 3.9e6)','(18.30, 21.10, −0.42)','+3d 12:40','4.4e5'],
+      ['C-09','(1.11e8, −8.9e7, 4.2e6)','(18.6, 21.5, −0.3)','+3d 13:58','1.7e6'],
+    ];
+    const candRows=cd.map(c=>{const act=c[0]==='C-07';return {id:c[0],pos:c[1],vel:c[2],saved:c[3],res:c[4],pick:this.pickCand,
+      idColor:act?'#4cc9e0':'#94a1b3', resColor:act?'#57c98a':'#94a1b3',
+      rowStyle:`border-top:1px solid #171d26;cursor:pointer;background:${act?'#101a22':'transparent'}`};});
+
+    const sr=[
+      ['01','9.20e7','−7.10e7','2.9e6','182 400','1.902','HIGH','#e0655f'],
+      ['02','9.80e7','−7.90e7','3.4e6','41 900','0.418','MED','#e0b455'],
+      ['03','1.020e8','−8.20e7','3.7e6','12 210','0.104','#57c98a','best'],
+      ['04','1.052e8','−8.41e7','3.9e6','1 980','0.019','#57c98a','best'],
+      ['05','1.090e8','−8.70e7','4.1e6','9 640','0.088','MED','#e0b455'],
+      ['06','1.140e8','−9.10e7','4.4e6','38 700','0.377','MED','#e0b455'],
+      ['07','1.210e8','−9.60e7','4.8e6','96 200','0.902','HIGH','#e0655f'],
+    ];
+    const searchRows=sr.map(r=>{const best=r[7]==='best';const c=best?'#57c98a':(r[6]==='HIGH'?'#e0655f':'#e0b455');
+      const totNum=(parseFloat(r[4].replace(/\s/g,''))/1e5+parseFloat(r[5])).toFixed(3);
+      return {i:r[0],x:r[1],y:r[2],z:r[3],r1:r[4],r2:r[5],tot:totNum,c1:c,c2:c,ct:c,
+        rowStyle:`border-top:1px solid #171d26;background:${best&&r[0]==='04'?'#0e1a16':'transparent'}`};});
+
+    // predictor
+    const pd=[
+      ['+0d','108 420 000','—','198.3M','8.421'],
+      ['+2d','94 810 000','—','182.1M','8.640'],
+      ['+4d','80 900 000','—','165.4M','8.902'],
+      ['+6d','66 720 000','—','148.0M','9.233'],
+      ['+8d','52 060 000','—','129.9M','9.688'],
+      ['+10d','37 220 000','—','111.0M','10.34'],
+      ['+12d','20 110 000','412 000','91.4M','11.62'],
+      ['+13d 04:11','1 834 200','988 400','80.9M','12.84','CA'],
+      ['+16d','22 640 000','604 100','62.2M','9.71'],
+      ['+20d','55 040 000','—','35.1M','8.44'],
+      ['+24d','86 700 000','—','9.9M','7.98'],
+      ['+30d','132 100 000','—','44.6M','7.51'],
+    ];
+    const predRows=pd.map(p=>{const ca=p[5]==='CA';
+      return {t:p[0],dEarth:p[1],dMoon:p[2],dMars:p[3],vrel:p[4],
+        tColor:ca?'#e0b455':'#94a1b3', dColor:ca?'#e0b455':'#cfd8e4', dWeight:ca?'600':'400',
+        rowStyle:`border-top:1px solid #171d26;background:${ca?'#181206':'transparent'}`};});
+
+    // data screen
+    const shipRows=[
+      {k:'Dry mass',v:'12 000 kg',c:'#cfd8e4'},
+      {k:'Max acceleration',v:'0.50 m/s²',c:'#cfd8e4'},
+      {k:'Equivalent max thrust',v:'6 000 N',c:'#cfd8e4'},
+      {k:'Engine state',v:'IDLE',c:'#94a1b3'},
+      {k:'Cumulative Δv',v:'1.284 km/s',c:'#4cc9e0'},
+      {k:'Forward vector',v:'(−0.412, 0.883, 0.223)',c:'#cfd8e4'},
+      {k:'Active script',v:'none',c:'#94a1b3'},
+    ];
+    const ephemRows=[
+      {body:'Sun',color:'#ffd15a',x:'0',y:'0',z:'0',r:'0.000'},
+      {body:'Earth',color:'#5aa0ff',x:'1.38610e8',y:'5.42100e7',z:'1.2e1',r:'0.9948'},
+      {body:'Moon',color:'#c7ccd6',x:'1.38912e8',y:'5.39800e7',z:'−1.9e4',r:'0.9955'},
+      {body:'Mars',color:'#e0654a',x:'−4.81200e7',y:'2.27340e8',z:'6.12e6',r:'1.5535'},
+      {body:'Venus',color:'#ffe6a8',x:'8.14000e7',y:'−6.72000e7',z:'−5.1e6',r:'0.7052'},
+      {body:'Jupiter',color:'#e8c69a',x:'3.81200e8',y:'6.51400e8',z:'−1.02e7',r:'5.0450'},
+    ];
+    const burns = S.cancelled ? [] : [{id:'SB-2',status:'ARMED',t:'+13d 04:12:00',dv:'0.192 km/s',throttle:'0.60',dur:'640 s',dir:'(−0.412, 0.883, 0.223)',cancel:this.cancelBurn}];
+
+    const elemSolar=[
+      {k:'Reference',v:'Sun · ecliptic'},{k:'Semi-major a',v:'1.114 AU'},{k:'Eccentricity e',v:'0.187'},
+      {k:'Inclination i',v:'3.42°'},{k:'Asc. node Ω',v:'214.6°'},{k:'Arg. periapsis ω',v:'88.1°'},
+      {k:'True anomaly ν',v:'132.7°'},{k:'Periapsis (center)',v:'1.353e8 km'},{k:'Apoapsis (center)',v:'1.978e8 km'},{k:'Period',v:'1.176 yr'},
+    ];
+    const elemEarth=[
+      {k:'Reference',v:'Earth · ecliptic'},{k:'Regime',v:'HYPERBOLIC'},{k:'Eccentricity e',v:'1.34'},
+      {k:'Inclination i',v:'19.7°'},{k:'Perigee (center)',v:'1.834e6 km'},{k:'v∞',v:'4.12 km/s'},
+      {k:'C3',v:'16.98 km²/s²'},{k:'Turn angle',v:'96.4°'},{k:'Closest approach',v:'@ +13d 04:11'},{k:'SOI status',v:'MISS (>929 000 km)'},
+    ];
+
+    const logBase=[
+      {t:'+3d 14:22:01',type:'RADIO',inst:'Earth beacon',readout:'range 108 420 113 km · dir (−0.412, 0.883, 0.223)'},
+      {t:'+3d 13:57:40',type:'ANGSEP',inst:'Telescope',readout:'Earth ↔ Mars   '+this.sepDeg('earth','mars')+'°'},
+      {t:'+3d 13:55:12',type:'ANGSEP',inst:'Telescope',readout:'Earth ↔ Sun   '+this.sepDeg('earth','sun')+'°'},
+      {t:'+3d 11:20:03',type:'SUNDIR',inst:'Sun sensor',readout:'(−0.221, 0.964, 0.148)'},
+      {t:'+3d 09:48:31',type:'RADIO',inst:'Earth beacon',readout:'range 108 600 314 km · dir (−0.409, 0.884, 0.224)'},
+      {t:'+2d 22:14:09',type:'ANGSEP',inst:'Telescope',readout:'Sun ↔ Vega   '+this.sepDeg('sun','vega')+'°'},
+      {t:'+2d 18:02:55',type:'RADIO',inst:'Earth beacon',readout:'range 108 944 108 km · dir (−0.404, 0.886, 0.223)'},
+      {t:'+2d 06:00:00',type:'SUNDIR',inst:'Sun sensor',readout:'(−0.218, 0.965, 0.147)'},
+    ];
+    const userLog=S.userSeps.map(u=>({t:u.t,type:'ANGSEP',inst:'Telescope',readout:`${u.a} ↔ ${u.b}   ${u.deg}°`}));
+    const tagStyle=t=>t==='RADIO'?['#7fb2ff','#25406b']:t==='ANGSEP'?['#4cc9e0','#1d4a54']:['#e0b455','#4a3d1f'];
+    const logRows=[...userLog,...logBase].map(m=>{const c=tagStyle(m.type);return {...m,tagColor:c[0],tagBorder:c[1]};});
+
+    const planeLabel=S.insRef==='solar'?'solar ecliptic':'Earth ecliptic';
+
+    return {
+      utc:this.fmtUTC(S.met), met:this.fmtMET(S.met), warps, nav, vitals,
+      isTele:S.screen==='telescope', isSeq:S.screen==='seq', isData:S.screen==='data',
+      // telescope
+      skyRef:this.setSky, skyWrapRef:this.setWrap, onDown:this.onDown, onMove:this.onMove, onUp:this.onUp, onSkyClick:this.onSkyClick, onWheel:this.onWheel,
+      inTele:S.teleMode==='telescope', fov:S.fov, fovLabel:(S.teleMode==='outside'?'72.0°':S.fov.toFixed(1)+'°'), onFov:this.onFov,
+      outsideBtn:teleBtnStyle(S.teleMode==='outside'), teleBtn:teleBtnStyle(S.teleMode==='telescope'), setOutside:this.setMode('outside'), setTeleMode:this.setMode('telescope'),
+      idList, idOptions, idCount:S.identified.length, objTotal:this.objs.length, noneId:S.identified.length===0,
+      sepA:S.sepA, sepB:S.sepB, onSepA:this.onSepA, onSepB:this.onSepB,
+      sepDeg: sv==null?'— — —':(sv*180/Math.PI).toFixed(3)+'°', sepRad: sv==null?'select two identified objects':(sv.toFixed(6)+' rad'), sepColor: sv==null?'#5d6b7d':'#4cc9e0',
+      sepDisabled: sv==null, logSep:this.logSep,
+      logSepStyle:`width:100%;margin-top:11px;background:${sv==null?'#141a23':'#123a2c'};border:1px solid ${sv==null?'#232c39':'#1f5c44'};border-radius:6px;padding:9px;font-size:11.5px;color:${sv==null?'#5d6b7d':'#7ee0a8'};font-weight:600;`,
+      // seq
+      seqTabs, tabScript:S.seqTab==='script', tabCalc:S.seqTab==='calc', tabCand:S.seqTab==='cand', tabPred:S.seqTab==='pred',
+      scriptLines, runConsole:this.runConsole, stopConsole:this.stopConsole, consoleRef:this.consoleRef, visibleOut, idle:S.outCount===0&&!S.running,
+      runStatus:S.running?'▶ RUNNING':(S.outCount>0?'● EXITED 0':'○ IDLE'), runColor:S.running?'#7ee0a8':(S.outCount>0?'#57c98a':'#5d6b7d'),
+      calcOp:S.calcOp, onCalcOp:this.onCalcOp, calcInput, calcResult:this.calc(), constants,
+      ax:S.ax,ay:S.ay,az:S.az,bx:S.bx,by:S.by,bz:S.bz, onAx:this.onAx,onAy:this.onAy,onAz:this.onAz,onBx:this.onBx,onBy:this.onBy,onBz:this.onBz,
+      candRows, searchRows, predRows,
+      // data
+      shipRows, ephemRows, burns, noBurns:burns.length===0,
+      newLock:this.newLock,
+      warpIdxData:S.warpIdx, skipN:S.skipN, skipUnit:S.skipUnit, onSkipN:this.onSkipN, onSkipUnit:this.onSkipUnit, doSkip:this.doSkip,
+      insRef:S.insRef, setSolar:this.setInsRef('solar'), setEarthRef:this.setInsRef('earth'),
+      solarBtn:`border:none;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.06em;padding:5px 11px;background:${S.insRef==='solar'?'#123a2c':'transparent'};color:${S.insRef==='solar'?'#7ee0a8':'#5d6b7d'};`,
+      earthBtn:`border:none;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.06em;padding:5px 11px;background:${S.insRef==='earth'?'#123a2c':'transparent'};color:${S.insRef==='earth'?'#7ee0a8':'#5d6b7d'};`,
+      elemRows:S.insRef==='solar'?elemSolar:elemEarth, planeLabel,
+      logRows,
+    };
+  }
+}
+</script>
+
+
+</body></html>
