@@ -1,6 +1,7 @@
 // Script execution model (src/sandbox/runner.ts, mvp0_spec.md §8.1, §8.3).
 import { describe, it, expect } from 'vitest';
 import { compileScript, extractLine, SHADOWED_NAMES } from '../../src/sandbox/runner';
+import { FORBIDDEN_GLOBALS } from '../../src/sandbox/neutralize';
 import type { GameApi } from '../../src/sandbox/api';
 
 function apiWith(extra: Record<string, unknown> = {}): GameApi {
@@ -44,6 +45,19 @@ describe('compileScript', () => {
     for (const n of SHADOWED_NAMES) {
       expect(results[n]).toBe('undefined');
     }
+  });
+
+  it('includes every forbidden network/messaging global in the shadow backstop (#9)', () => {
+    // The parameter-shadow layer must cover the §8.1 forbidden globals, not just
+    // the hint names — it is the backstop for when neutralize.ts cannot delete a
+    // non-configurable global. Deduped (no duplicate function parameters).
+    for (const name of FORBIDDEN_GLOBALS) {
+      expect(SHADOWED_NAMES).toContain(name);
+    }
+    for (const name of ['postMessage', 'fetch', 'importScripts', 'XMLHttpRequest', 'WebSocket', 'indexedDB']) {
+      expect(SHADOWED_NAMES).toContain(name);
+    }
+    expect(new Set(SHADOWED_NAMES).size).toBe(SHADOWED_NAMES.length);
   });
 
   it('propagates a runtime error out of run()', async () => {

@@ -522,9 +522,13 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
     beaconDot.classList.toggle('is-locked', beaconLocked);
     beaconState.classList.toggle('is-locked', beaconLocked);
     beaconState.textContent = beaconLocked ? 'LOCKED' : 'NO LOCK';
+    // Keep the nav-rail vital in sync with the header indicator (previously it
+    // was created but never updated, so it was stuck at its placeholder).
+    vitalBeacon.textContent = beaconLocked ? 'LOCKED' : 'NO LOCK';
   }
 
   vitalMaxAccel.textContent = '0.5 m/s²';
+  vitalBeacon.textContent = 'NO LOCK';
 
   // Show the scenario picker on mount (spec §2: minimal start flow).
   showScenarioPicker();

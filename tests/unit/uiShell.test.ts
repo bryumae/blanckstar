@@ -194,8 +194,16 @@ describe('mountShell (§7 intro, §2)', () => {
       },
     });
     expect(root.querySelector('.shell-beacon-state')?.textContent).toBe('LOCKED');
+    // The nav-rail System Vitals "Beacon" row must track the header (#10 — it
+    // used to be created but never updated, stuck at its placeholder).
+    const beaconVital = (): string | null | undefined =>
+      [...root.querySelectorAll('.shell-vital-row')]
+        .find((r) => r.querySelector('.shell-vital-key')?.textContent === 'Beacon')
+        ?.querySelector('.shell-vital-value')?.textContent;
+    expect(beaconVital()).toBe('LOCKED');
     emit({ type: 'ready', seedId: 'seed-a', epoch: 1_756_684_800 });
     expect(root.querySelector('.shell-beacon-state')?.textContent).toBe('NO LOCK');
+    expect(beaconVital()).toBe('NO LOCK');
   });
 
   it('shows a win overlay with mission stats on a won event', () => {

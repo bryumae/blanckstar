@@ -44,6 +44,35 @@ describe('WarpDriver pacing (§6)', () => {
     expect(c.ofType('state').length).toBeGreaterThan(0);
   });
 
+  it('warp trajectory is frame-rate independent and matches skip (#7)', () => {
+    // The integration grid must not depend on tick cadence: covering the same
+    // total wall time in ragged ticks yields the same substeps as one big tick,
+    // and matches an equivalent skipToTime. (Previously the per-tick dt clamp
+    // made warp frame-rate dependent and divergent from skip.)
+    function runWarp(increments: number[]): { simTime: number; pos: unknown } {
+      const { c, dispatcher, advanceWall, pump } = harness();
+      dispatcher.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });
+      dispatcher.handle({ type: 'setWarp', factor: 1000 });
+      for (const ms of increments) {
+        advanceWall(ms);
+        pump();
+      }
+      dispatcher.handle({ type: 'setWarp', factor: 0 }); // force a final state emit
+      return { simTime: dispatcher.sim.getSimTime(), pos: c.ofType('state').at(-1)!.ship.position };
+    }
+    const even = runWarp([100, 100, 100, 100]);
+    const ragged = runWarp([7, 213, 5, 175]); // same 400 ms total, uneven frames
+    expect(ragged.simTime).toBe(even.simTime);
+    expect(ragged.pos).toEqual(even.pos);
+
+    // And a skip to the same reached time lands on the identical state.
+    const cs = new EventCollector();
+    const skipDisp = new SimDispatcher(cs.emit, (t) => () => void t, () => 0);
+    skipDisp.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });
+    skipDisp.sim.skipToTime(even.simTime);
+    expect(cs.ofType('state').at(-1)!.ship.position).toEqual(even.pos);
+  });
+
   it('pause (factor 0) stops the tick loop', () => {
     const { dispatcher, activeTicks } = harness();
     dispatcher.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });

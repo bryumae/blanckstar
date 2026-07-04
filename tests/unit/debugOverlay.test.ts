@@ -109,6 +109,20 @@ describe('mountDebugOverlay (§10)', () => {
     expect(energyRow?.querySelector('.value')?.textContent).toMatch(/J\/kg/);
   });
 
+  it('does not busy-loop ephemeris queries when a result arrives while paused (#8)', () => {
+    const root = document.createElement('div');
+    const { deps, emit, sent } = makeHarness();
+    mountDebugOverlay(root, deps);
+    emit(makeStateEvent({ warp: 0 })); // one query for this frame
+    // The result handler must refresh the panel WITHOUT re-rendering (which
+    // would re-issue a query for the same simTime, ad infinitum while paused).
+    emit({ type: 'ephemerisResult', requestId: -1, position: { x: 1.5e11, y: 0, z: 0 }, velocity: { x: 0, y: 29785, z: 0 } });
+    expect(sent.filter((c) => c.type === 'ephemerisQuery')).toHaveLength(1);
+    // Re-delivering the same-simTime state also must not re-query.
+    emit(makeStateEvent({ warp: 0 }));
+    expect(sent.filter((c) => c.type === 'ephemerisQuery')).toHaveLength(1);
+  });
+
   it('sends a debugTeleport command with km->m converted values on submit', () => {
     const root = document.createElement('div');
     const { deps, sent } = makeHarness();

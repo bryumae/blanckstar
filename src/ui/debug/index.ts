@@ -133,6 +133,7 @@ export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): De
   let latest: StateEvent | null = null;
   let earthVelocity: Vector3 | null = null;
   let pendingEarthVelQuery = false;
+  let earthVelSimTime: number | null = null; // simTime the current Earth velocity is for
   const DEBUG_EPHEMERIS_REQUEST_ID = -1; // negative: distinguishable from app-issued request ids
 
   function ctx2d(): CanvasRenderingContext2D | null {
@@ -195,28 +196,37 @@ export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): De
       rowTotalSteps.value.textContent = String(state.debug.totalSteps);
     }
 
-    const earthPos = state.bodies.earth;
-    if (earthVelocity) {
-      const rel = computeEarthRelativeState(state.ship.position, state.ship.velocity, earthPos, earthVelocity);
-      rowEarthPos.value.textContent = formatMagnitudeKm(rel.positionRel);
-      rowEarthVel.value.textContent = formatMagnitudeKmPerSec(rel.velocityRel);
-      rowEarthEnergy.value.textContent = `${rel.specificEnergy.toFixed(2)} J/kg`;
-      rowEarthEnergy.value.classList.toggle('is-bound', rel.bound);
-      rowEarthEnergy.value.classList.toggle('is-unbound', !rel.bound);
-      rowEarthSOI.value.textContent = rel.insideSOI ? 'INSIDE SOI' : 'outside SOI';
-      rowEarthSOI.value.classList.toggle('is-bound', rel.insideSOI);
-      rowEarthAlt.value.textContent = `${(rel.altitude / 1000).toFixed(1)} km`;
-    }
+    updateEarthRelative(state);
 
-    // Fetch Earth's velocity once per state frame via the existing ephemeris
-    // query command (§7.4) rather than duplicating Hermite interpolation here;
-    // the sim already owns that math.
-    if (!pendingEarthVelQuery) {
+    // Fetch Earth's velocity for this frame via the existing ephemeris query
+    // command (§7.4) rather than duplicating Hermite interpolation here; the sim
+    // already owns that math. Guard on the frame's simTime (not just the pending
+    // flag) so we don't re-query the same instant — otherwise, while paused, the
+    // result handler would re-trigger a query in an endless ping-pong.
+    if (state.simTime !== earthVelSimTime && !pendingEarthVelQuery) {
       pendingEarthVelQuery = true;
+      earthVelSimTime = state.simTime;
       deps.send({ type: 'ephemerisQuery', requestId: DEBUG_EPHEMERIS_REQUEST_ID, body: 'earth', t: state.simTime });
     }
 
     redrawMap();
+  }
+
+  // Refresh only the Earth-relative panel from the latest state + Earth velocity.
+  // Called on each state frame and once Earth's velocity arrives — the latter
+  // must NOT re-run render() (which pushes the trace and re-queries), or a paused
+  // sim would loop forever re-drawing the same frame.
+  function updateEarthRelative(state: StateEvent): void {
+    if (!earthVelocity) return;
+    const rel = computeEarthRelativeState(state.ship.position, state.ship.velocity, state.bodies.earth, earthVelocity);
+    rowEarthPos.value.textContent = formatMagnitudeKm(rel.positionRel);
+    rowEarthVel.value.textContent = formatMagnitudeKmPerSec(rel.velocityRel);
+    rowEarthEnergy.value.textContent = `${rel.specificEnergy.toFixed(2)} J/kg`;
+    rowEarthEnergy.value.classList.toggle('is-bound', rel.bound);
+    rowEarthEnergy.value.classList.toggle('is-unbound', !rel.bound);
+    rowEarthSOI.value.textContent = rel.insideSOI ? 'INSIDE SOI' : 'outside SOI';
+    rowEarthSOI.value.classList.toggle('is-bound', rel.insideSOI);
+    rowEarthAlt.value.textContent = `${(rel.altitude / 1000).toFixed(1)} km`;
   }
 
   const unsubscribe = deps.subscribe((event) => {
@@ -225,7 +235,11 @@ export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): De
     } else if (event.type === 'ephemerisResult' && event.requestId === DEBUG_EPHEMERIS_REQUEST_ID) {
       earthVelocity = event.velocity;
       pendingEarthVelQuery = false;
-      if (latest) render(latest);
+      // Light refresh only — do not call render() (see updateEarthRelative).
+      if (latest) {
+        updateEarthRelative(latest);
+        redrawMap();
+      }
     }
   });
 

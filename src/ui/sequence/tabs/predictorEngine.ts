@@ -146,7 +146,10 @@ export function propagateForPrediction(
   while (t < target && guard++ < maxSteps) {
     const bodies = gravitatingBodiesAt(ephemeris, t);
     let dt = selectTimestep(state.position, bodies);
-    dt = stepToBoundary(t, dt, [...boundaries, nextOut, target]);
+    // Snap only to burn boundaries and the target, matching the sim's grid
+    // (§4.4). The output cadence must not be an integration boundary or the
+    // trajectory would depend on stepOutSeconds (see the sandbox predict()).
+    dt = stepToBoundary(t, dt, [...boundaries, target]);
     if (dt <= 0) {
       dt = Math.min(selectTimestep(state.position, bodies), target - t);
       if (dt <= 0) break;
@@ -165,7 +168,9 @@ export function propagateForPrediction(
 
     if (t >= nextOut - 1e-9) {
       samples.push(sampleAt(ephemeris, state, t));
-      nextOut += stepOutSeconds;
+      do {
+        nextOut += stepOutSeconds;
+      } while (nextOut <= t + 1e-9);
       onProgress?.(Math.min(1, (t - input.epoch) / durationSeconds));
     }
   }
@@ -180,12 +185,12 @@ export function propagateForPrediction(
 }
 
 // Split a full propagation into async chunks so a long run does not freeze the
-// UI thread. Each chunk propagates `chunkSeconds` of simulated time (or less,
-// for the final chunk), yielding to the event loop between chunks and
-// reporting progress. Returns the same PredictorResult as a single call to
-// propagateForPrediction with the same inputs (chunking only affects when
-// control yields, not the physics — dt selection is still driven off the true
-// elapsed sim time within each chunk).
+// UI thread. It yields to the event loop roughly every `chunkSeconds` of
+// simulated time and reports progress. Returns the SAME PredictorResult as a
+// single call to propagateForPrediction with the same inputs: the integration
+// grid is identical (burn boundaries + target only — the chunk cadence is a
+// yield point, never an integration boundary), so chunking changes only when
+// control yields, not the physics.
 export async function propagateForPredictionChunked(
   ephemeris: EphemerisData,
   input: PredictorInput,
@@ -220,45 +225,49 @@ export async function propagateForPredictionChunked(
   let guard = 0;
   const maxSteps = Math.ceil(durationSeconds / 1) + boundaries.length + 100_000;
 
+  // The next sim time at which to yield control. Advanced by chunkSeconds; it is
+  // deliberately NOT passed to stepToBoundary, so the integration grid matches
+  // the single-call path exactly (steps may overshoot a yield point).
+  let nextYield = input.epoch + chunkSeconds;
+
   while (t < target && guard++ < maxSteps) {
-    const chunkEnd = Math.min(t + chunkSeconds, target);
+    const bodies = gravitatingBodiesAt(ephemeris, t);
+    let dt = selectTimestep(state.position, bodies);
+    dt = stepToBoundary(t, dt, [...boundaries, target]);
+    if (dt <= 0) {
+      dt = Math.min(selectTimestep(state.position, bodies), target - t);
+      if (dt <= 0) break;
+    }
 
-    while (t < chunkEnd && guard++ < maxSteps) {
-      const bodies = gravitatingBodiesAt(ephemeris, t);
-      let dt = selectTimestep(state.position, bodies);
-      dt = stepToBoundary(t, dt, [...boundaries, nextOut, chunkEnd]);
-      if (dt <= 0) {
-        dt = Math.min(selectTimestep(state.position, bodies), chunkEnd - t);
-        if (dt <= 0) break;
-      }
+    const thrust = thrustAt(burns, t, maxAcceleration);
+    state = advance(ephemeris, state, t, dt, thrust);
+    t += dt;
 
-      const thrust = thrustAt(burns, t, maxAcceleration);
-      state = advance(ephemeris, state, t, dt, thrust);
-      t += dt;
+    const dEarth = norm(sub(state.position, positionAt(ephemeris, 'earth', t)));
+    if (dEarth < closest.distanceEarth) {
+      closest = { t, distanceEarth: dEarth };
+    }
 
-      const dEarth = norm(sub(state.position, positionAt(ephemeris, 'earth', t)));
-      if (dEarth < closest.distanceEarth) {
-        closest = { t, distanceEarth: dEarth };
-      }
-
-      if (t >= nextOut - 1e-9) {
-        samples.push(sampleAt(ephemeris, state, t));
+    if (t >= nextOut - 1e-9) {
+      samples.push(sampleAt(ephemeris, state, t));
+      do {
         nextOut += stepOutSeconds;
+      } while (nextOut <= t + 1e-9);
+    }
+
+    // Yield ~every chunkSeconds of sim time, without perturbing the grid above.
+    if (t >= nextYield && t < target) {
+      options.onProgress?.(Math.min(1, (t - input.epoch) / durationSeconds));
+      if (options.isCancelled?.()) {
+        return null;
       }
-    }
-
-    const fraction = Math.min(1, (t - input.epoch) / durationSeconds);
-    options.onProgress?.(fraction);
-
-    if (options.isCancelled?.()) {
-      return null;
-    }
-
-    if (t < target) {
       await yieldFn();
       if (options.isCancelled?.()) {
         return null;
       }
+      do {
+        nextYield += chunkSeconds;
+      } while (nextYield <= t);
     }
   }
 

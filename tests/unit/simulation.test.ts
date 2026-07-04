@@ -163,6 +163,28 @@ describe('win / lose (§2, AC12)', () => {
     expect(sim.isOver()).toBe(true);
   });
 
+  it('a win reached during skipToTime emits won but not a spurious interrupted (#2)', () => {
+    const { sim, c } = freshSim(captureSeed(eph, epoch));
+    sim.skipToTime(epoch + 5000);
+    expect(c.ofType('won')).toHaveLength(1);
+    expect(c.ofType('interrupted')).toHaveLength(0);
+  });
+
+  it('a loss reached during skipToTime emits lost but not a spurious interrupted (#2)', () => {
+    const { sim, c } = freshSim(atmosphereSeed(eph, epoch));
+    sim.skipToTime(epoch + 5000);
+    expect(c.ofType('lost')).toHaveLength(1);
+    expect(c.ofType('interrupted')).toHaveLength(0);
+  });
+
+  it('skipToTime to a past/equal target still emits a completed skipProgress (#1)', () => {
+    // So a bridge wait() keyed to a now/past target resolves instead of hanging.
+    const { sim, c } = freshSim(cruiseSeed(eph, epoch));
+    c.clear();
+    sim.skipToTime(epoch); // target == current sim time: nothing to advance
+    expect(c.ofType('skipProgress').some((p) => p.fraction === 1)).toBe(true);
+  });
+
   it('reset restarts from the seed and clears the log', () => {
     const { sim, c } = freshSim(atmosphereSeed(eph, epoch));
     sim.stepOnce(Infinity);

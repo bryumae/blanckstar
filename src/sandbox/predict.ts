@@ -96,8 +96,13 @@ export function predict(
   while (t < target && guard++ < maxSteps) {
     const bodies = gravitatingBodiesAt(ephemeris, t);
     let dt = selectTimestep(state.position, bodies);
-    // Snap to the next burn boundary, the next output tick, and the target.
-    dt = stepToBoundary(t, dt, [...boundaries, nextOut, target]);
+    // Snap only to burn boundaries and the target — exactly the boundaries the
+    // sim uses (§4.4). The output cadence is a sampling concern and must NOT be
+    // an integration boundary: feeding `nextOut` here would shorten substeps
+    // onto the sampling grid and produce a different trajectory than the sim
+    // (and than the same predict() with a different stepOut), breaking the
+    // same-engine guarantee (§7.7/§8.2).
+    dt = stepToBoundary(t, dt, [...boundaries, target]);
     if (dt <= 0) {
       // A boundary sits exactly at t; nudge past it using the base dt so we make
       // progress (matches the sim treating at-`now` boundaries as already hit).
@@ -109,9 +114,14 @@ export function predict(
     state = advance(ephemeris, state, t, dt, thrust);
     t += dt;
 
+    // Emit a row at the first step endpoint at/after each output tick. Sample
+    // times are therefore step-aligned (>= the tick), while the state values
+    // remain bit-identical to the sim's own propagation.
     if (t >= nextOut - 1e-9) {
       samples.push({ t, position: state.position, velocity: state.velocity });
-      nextOut += stepOut;
+      do {
+        nextOut += stepOut;
+      } while (nextOut <= t + 1e-9);
     }
   }
 

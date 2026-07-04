@@ -75,7 +75,9 @@ describe('propagateForPrediction — engine parity', () => {
     while (t < target) {
       const bodies = { sun: positionAt(ephemeris, 'sun', t), earth: positionAt(ephemeris, 'earth', t), moon: positionAt(ephemeris, 'moon', t) };
       let dt = selectTimestep(state.position, bodies);
-      dt = stepToBoundary(t, dt, [nextOut, target]);
+      // Natural grid only (target, not the output cadence) — the predictor must
+      // integrate exactly this grid; the output tick is a sampling concern.
+      dt = stepToBoundary(t, dt, [target]);
       if (dt <= 0) dt = Math.min(selectTimestep(state.position, bodies), target - t);
       state = rk4Step(state, t, dt, (s, tt) => gravityAcceleration(s.position, {
         sun: positionAt(ephemeris, 'sun', tt), earth: positionAt(ephemeris, 'earth', tt), moon: positionAt(ephemeris, 'moon', tt),
@@ -84,7 +86,9 @@ describe('propagateForPrediction — engine parity', () => {
       if (t >= nextOut - 1e-9) {
         truthTimes.push(t);
         truthStates.push(state);
-        nextOut += stepOut;
+        do {
+          nextOut += stepOut;
+        } while (nextOut <= t + 1e-9);
       }
     }
 

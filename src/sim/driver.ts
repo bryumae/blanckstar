@@ -24,6 +24,14 @@ export class WarpDriver {
   private cancel: (() => void) | null = null;
   private lastTickWallMs = 0;
   private lastEmitWallMs = 0;
+  // Unspent sim-seconds carried between ticks. Wall-clock time is accumulated
+  // here and drawn down by whole physics substeps; it is NEVER used to shorten a
+  // substep. That keeps the integration grid (selectTimestep + burn boundaries)
+  // independent of frame cadence, so a warped run is deterministic and matches
+  // skipToTime — the previous per-tick dt clamp made warp frame-rate dependent
+  // (§6 bit-reproducibility). The trade-off is up to one substep of overshoot
+  // per tick, which averages out; at low warp near a body dt is already small.
+  private budget = 0;
 
   constructor(
     private readonly sim: Simulation,
@@ -38,6 +46,7 @@ export class WarpDriver {
     if (factor === 0 || this.sim.isOver()) {
       return;
     }
+    this.budget = 0;
     this.lastTickWallMs = this.now();
     this.lastEmitWallMs = this.lastTickWallMs;
     this.cancel = this.schedule(() => this.tick(factor));
@@ -57,19 +66,22 @@ export class WarpDriver {
     const wallElapsedMs = wallNow - this.lastTickWallMs;
     this.lastTickWallMs = wallNow;
 
-    let budget = (wallElapsedMs / 1000) * factor; // sim-seconds to advance this tick
-    while (budget > 0 && !this.sim.isOver()) {
+    this.budget += (wallElapsedMs / 1000) * factor; // sim-seconds to advance
+    while (this.budget > 0 && !this.sim.isOver()) {
       const before = this.sim.getSimTime();
-      const result = this.sim.stepOnce(budget);
+      // Infinity: take a full boundary-snapped substep, never a wall-clock-sized
+      // partial one — the grid must not depend on frame timing (see `budget`).
+      const result = this.sim.stepOnce(Infinity);
       const advanced = this.sim.getSimTime() - before;
       if (result.interrupt || result.over) {
+        this.budget = 0;
         this.stop();
         return;
       }
       if (advanced <= 0) {
         break; // no progress possible (defensive; shouldn't happen with dt>0)
       }
-      budget -= advanced;
+      this.budget -= advanced; // may go slightly negative; carried to next tick
     }
 
     // Throttled state emission (~10 Hz), plus one at the batch end.

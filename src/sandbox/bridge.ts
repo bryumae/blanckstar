@@ -112,6 +112,11 @@ export class SandboxBridge {
   private readonly cancelWaiters = new Map<number, PendingCall>();
   // wait(): one at a time (a script awaits sequentially). Target sim time.
   private waitWaiter: { target: number; call: PendingCall } | null = null;
+  // Tracks whether the sim has reached a terminal verdict (won/lost). A wait()
+  // issued after the game is over can never be satisfied by advancing time, so
+  // it resolves immediately (script sees time stopped, §6) instead of hanging on
+  // a skipToTime the sim will no-op.
+  private simEnded = false;
 
   // Mirrors updated from the sim stream (§8.2: status/measurements/timeNow).
   private latestSimTime = 0;
@@ -361,6 +366,12 @@ export class SandboxBridge {
           this.reply(call.callId, true, undefined);
           return;
         }
+        if (this.simEnded) {
+          // Game already over: time is frozen, so a positive wait completes at
+          // once rather than posting a skipToTime the sim will no-op (§6).
+          this.reply(call.callId, true, undefined);
+          return;
+        }
         settle(
           new Promise<unknown>((resolve, reject) => {
             this.waitWaiter = { target, call: { method: 'wait', resolve, reject: (e) => reject(new Error(e)) } };
@@ -399,6 +410,10 @@ export class SandboxBridge {
 
   private onSimEvent = (event: SimEvent): void => {
     switch (event.type) {
+      case 'ready':
+        // A fresh scenario/reset: time can advance again.
+        this.simEnded = false;
+        return;
       case 'state':
         this.latestSimTime = event.simTime;
         this.latestForward = event.ship.forward;
@@ -425,7 +440,12 @@ export class SandboxBridge {
       }
       case 'burnEnded':
         this.latestDeltaV = event.deltaVSpent;
-        this.burnWaiters.shift()?.resolve(undefined);
+        // Only an immediate burn() is awaited on its end (scheduledId === null).
+        // A scheduled burn's completion must not resolve a pending burn() waiter
+        // — scheduleBurn() already resolved when the burn was queued.
+        if (event.scheduledId === null) {
+          this.burnWaiters.shift()?.resolve(undefined);
+        }
         return;
       case 'scheduledBurnAdded': {
         const b = event.burn;
@@ -453,16 +473,20 @@ export class SandboxBridge {
         }
         return;
       }
-      case 'interrupted':
       case 'won':
       case 'lost':
+        // Terminal verdict: mark ended so a later wait() resolves immediately.
+        this.simEnded = true;
+        this.resolveWaitEarly();
+        return;
+      case 'interrupted':
         // wait() resolves early — script sees time stopped (§6, ADR-0002).
         this.resolveWaitEarly();
         return;
       case 'error':
-        // A sim-side rejection: fail the most recent pending ship command that
-        // can error (burn/schedule/cancel/point). Prefer the newest issued.
-        this.failPendingOnSimError(event.message);
+        // A sim-side rejection: route it to the waiter for the command that
+        // produced it (falls back to a priority guess for untagged errors).
+        this.failPendingOnSimError(event.message, event.command);
         return;
     }
   };
@@ -522,8 +546,36 @@ export class SandboxBridge {
     }
   }
 
-  private failPendingOnSimError(message: string): void {
-    // Reject the oldest pending errable command; burns are the common case.
+  private failPendingOnSimError(message: string, command?: SimCommand['type']): void {
+    // Preferred path: the sim tags the failing command, so reject exactly the
+    // matching pending waiter (FIFO within a kind is exact — the sim is
+    // single-threaded and the bridge is the sole issuer).
+    switch (command) {
+      case 'burn':
+        this.burnWaiters.shift()?.reject(message);
+        return;
+      case 'scheduleBurn':
+        this.scheduleWaiters.shift()?.reject(message);
+        return;
+      case 'point':
+        this.pointWaiters.shift()?.reject(message);
+        return;
+      case 'cancelBurn': {
+        const firstCancel = this.cancelWaiters.keys().next();
+        if (!firstCancel.done) {
+          this.cancelWaiters.get(firstCancel.value)!.reject(message);
+          this.cancelWaiters.delete(firstCancel.value);
+        }
+        return;
+      }
+    }
+    // A tagged-but-non-errable command (e.g. annotateMeasurement, which the
+    // script never awaits): don't mis-reject an unrelated ship command.
+    if (command !== undefined) {
+      return;
+    }
+    // Untagged error (defensive; a sim without command routing): reject the
+    // oldest pending errable command, burns first.
     if (this.burnWaiters.length > 0) {
       this.burnWaiters.shift()!.reject(message);
       return;

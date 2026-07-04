@@ -294,7 +294,7 @@ describe('SandboxBridge correlation', () => {
     const w = h.currentWorker();
     call(w, 60, 'burn', [0.5, 600]);
     expect(h.sim.commands).toContainEqual({ type: 'burn', throttle: 0.5, duration: 600 });
-    h.sim.emit({ type: 'burnEnded', endTime: 700, deltaVSpent: 150 });
+    h.sim.emit({ type: 'burnEnded', endTime: 700, deltaVSpent: 150, scheduledId: null });
     await flush();
     expect(w.replies().find((r) => r.callId === 60)!.ok).toBe(true);
   });
@@ -376,6 +376,69 @@ describe('SandboxBridge correlation', () => {
     await flush();
     expect(w.replies().find((r) => r.callId === 95)!.ok).toBe(true);
     expect(h.sim.commands.some((c) => c.type === 'skipToTime')).toBe(false);
+  });
+
+  it('wait after the game is over resolves immediately without posting skipToTime', async () => {
+    // Regression: a wait() issued once the sim is `over` used to post a
+    // skipToTime the sim no-ops (emitting nothing), hanging the promise forever.
+    const h = makeHarness();
+    h.bridge.run('x');
+    const w = h.currentWorker();
+    h.sim.emit({ type: 'won', stats: { missionElapsed: 1, deltaVSpent: 1, orbit: {} as never } });
+    call(w, 96, 'wait', [500]);
+    await flush();
+    expect(w.replies().find((r) => r.callId === 96)!.ok).toBe(true);
+    expect(h.sim.commands.some((c) => c.type === 'skipToTime')).toBe(false);
+    // A fresh scenario (ready) re-enables waiting via skipToTime.
+    h.sim.emit({ type: 'ready', seedId: 's', epoch: 1000 });
+    h.sim.emit({ type: 'state', simTime: 1000, missionElapsed: 0, warp: 0, ship: { position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 }, forward: { x: 1, y: 0, z: 0 }, deltaVSpent: 0, burning: false }, bodies: {} as never });
+    call(w, 97, 'wait', [500]);
+    expect(h.sim.commands).toContainEqual({ type: 'skipToTime', targetTime: 1500 });
+  });
+
+  it('a scheduled burn ending does not resolve a pending immediate burn() waiter', async () => {
+    // Regression: burnEnded is correlated by scheduledId, not FIFO — a scheduled
+    // burn completing must not prematurely resolve an awaited immediate burn().
+    const h = makeHarness();
+    h.bridge.run('x');
+    const w = h.currentWorker();
+    call(w, 110, 'burn', [0.5, 600]);
+    // A previously-scheduled burn (id 3) fires and ends first.
+    h.sim.emit({ type: 'burnEnded', endTime: 700, deltaVSpent: 40, scheduledId: 3 });
+    await flush();
+    expect(w.replies().find((r) => r.callId === 110)).toBeUndefined();
+    // The immediate burn's own end (scheduledId null) resolves it.
+    h.sim.emit({ type: 'burnEnded', endTime: 800, deltaVSpent: 90, scheduledId: null });
+    await flush();
+    expect(w.replies().find((r) => r.callId === 110)!.ok).toBe(true);
+  });
+
+  it('routes a tagged sim error to the matching waiter, not by fixed priority', async () => {
+    // Regression: with a burn() and a scheduleBurn() both outstanding, a
+    // scheduleBurn validation error must reject the scheduleBurn waiter, not the
+    // burn waiter (the old fixed-priority guess rejected burns first).
+    const h = makeHarness();
+    h.bridge.run('x');
+    const w = h.currentWorker();
+    call(w, 120, 'burn', [0.5, 600]);
+    call(w, 121, 'scheduleBurn', [10, { x: 1, y: 0, z: 0 }, 0.3, 100]);
+    h.sim.emit({ type: 'error', message: 'scheduleBurn: startTime is in the past', command: 'scheduleBurn' });
+    await flush();
+    const burnReply = w.replies().find((r) => r.callId === 120);
+    const schedReply = w.replies().find((r) => r.callId === 121)!;
+    expect(burnReply).toBeUndefined(); // burn() still pending
+    expect(schedReply.ok).toBe(false);
+    expect(schedReply.error).toMatch(/past/);
+  });
+
+  it('does not reject a ship command on an unrelated (annotate) sim error', async () => {
+    const h = makeHarness();
+    h.bridge.run('x');
+    const w = h.currentWorker();
+    call(w, 130, 'burn', [0.5, 600]);
+    h.sim.emit({ type: 'error', message: 'annotateMeasurement: no measurement 9', command: 'annotateMeasurement' });
+    await flush();
+    expect(w.replies().find((r) => r.callId === 130)).toBeUndefined(); // burn untouched
   });
 
   it('mirrors measurements across the whole run for log.measurements()', async () => {

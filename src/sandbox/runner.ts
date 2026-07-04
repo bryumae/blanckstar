@@ -11,12 +11,20 @@
 // injected object with no truePosition/etc., and bare `debug`/`solveTransfer`/
 // `autopilot` resolve to the shadowing params rather than any ambient global.
 import type { GameApi } from './api';
+import { FORBIDDEN_GLOBALS } from './neutralize';
 
-// Names shadowed to `undefined` in the script scope on top of the injected API
-// (§8.3). `ship`/`debug` etc.: the injected `ship` has only the allowed methods;
-// `debug`, `solveTransfer`, `autopilot` are shadowed so they resolve to
-// undefined instead of any ambient value.
-export const SHADOWED_NAMES: readonly string[] = ['debug', 'solveTransfer', 'autopilot'];
+// Non-API names re-bound to `undefined` in the script scope (§8.3). Two groups:
+//   - hint names the design deliberately withholds (`debug`/`solveTransfer`/
+//     `autopilot`): shadowed so they resolve to undefined, not any ambient value;
+//   - the §8.1 forbidden network/storage/messaging globals: this parameter layer
+//     is the belt-and-braces backstop neutralize.ts's comment promises for the
+//     case where deleting/redefining a non-configurable global fails on some
+//     host. Previously this list omitted them, so that backstop did not exist.
+// Deduped because FORBIDDEN_GLOBALS lists a couple of names twice and duplicate
+// function parameters are a SyntaxError.
+export const SHADOWED_NAMES: readonly string[] = [
+  ...new Set<string>(['debug', 'solveTransfer', 'autopilot', ...FORBIDDEN_GLOBALS]),
+];
 
 // The async function constructor (not exposed to the script). Obtained via the
 // prototype of an async function so we don't reference a global by name.
@@ -52,10 +60,13 @@ export function extractLine(err: unknown): number | null {
 // synchronously on a syntax error (caller reports it as a script error).
 export function compileScript(source: string, api: GameApi): CompiledScript {
   const apiNames = Object.keys(api);
-  const paramNames = [...apiNames, ...SHADOWED_NAMES];
+  // An injected API name wins over a shadow of the same name; keeping both would
+  // make a duplicate function parameter (a SyntaxError). None collide today.
+  const shadowNames = SHADOWED_NAMES.filter((n) => !apiNames.includes(n));
+  const paramNames = [...apiNames, ...shadowNames];
   const fn = new AsyncFunction(...paramNames, source);
   const apiValues = apiNames.map((n) => api[n]);
-  const shadowValues = SHADOWED_NAMES.map(() => undefined);
+  const shadowValues = shadowNames.map(() => undefined);
   return {
     run: () => fn(...apiValues, ...shadowValues),
   };

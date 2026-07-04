@@ -118,3 +118,29 @@ bit-identical ship state (tested by deep-equality of independent runs).
 - Per-substep verdict checks (`failureCheck`, `isCaptured`) and body-position
   sampling add cost to every step; acceptable at MVP0 scale and required for
   correctness (§2 "checked every integrator step").
+
+## Addendum (PR #14 code review) — two additive event fields
+
+The protocol was called "frozen" above; this addendum records two strictly
+additive, backward-compatible field additions made to fix event-correlation
+bugs found in review. No command was added or changed; no existing field
+changed meaning.
+
+- `BurnEndedEvent.scheduledId: number | null` — the scheduled handle a burn came
+  from (mirrors `BurnStartedEvent.scheduledId`), or `null` for an immediate
+  `burn()`. The sandbox bridge awaits an immediate `burn()` on its `burnEnded`;
+  without an id it resolved by FIFO and a scheduled burn completing mid-await
+  would wrongly resolve the immediate burn's waiter.
+- `ErrorEvent.command?: SimCommand['type']` — the command that produced the
+  error, when it came from one. The bridge routes the rejection to the matching
+  waiter instead of guessing by fixed priority (which mis-attributed when a
+  `burn()` and `scheduleBurn()` were outstanding together). Absent for errors
+  not tied to a single command.
+
+Also in this pass (no protocol change): `skipToTime` emits a completed
+`skipProgress` on a no-op skip (target already reached) so a bridge `wait()`
+keyed to a now/past target resolves rather than hanging; a win/lose verdict
+reached during a skip returns without also emitting `interrupted`; and the
+`WarpDriver` advances whole boundary-snapped substeps against a carried budget
+rather than clamping `dt` to the per-tick wall-clock slice, making a warped run
+frame-rate independent and bit-identical to `skipToTime`.

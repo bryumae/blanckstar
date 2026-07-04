@@ -213,6 +213,40 @@ describe('mountCandidatesTab', () => {
     expect(store.list().length).toBeGreaterThan(0);
   });
 
+  it('save-as-candidate persists the run-time epoch/velocity, not later form edits (#6)', () => {
+    measurements = [
+      { id: 1, simTime: 100, data: { kind: 'sunDirection', direction: { x: -1, y: 0, z: 0 } } },
+    ];
+    mount();
+    const searchInputs = r.querySelectorAll<HTMLInputElement>('.grid-form')[1]!.querySelectorAll('input');
+    // [xMin,xMax,yMin,yMax,zMin,zMax,step, vxFix,vyFix,vzFix, epoch]
+    const [xMin, xMax, yMin, yMax, zMin, zMax, step, vxFix, , , epoch] = searchInputs;
+    xMin!.value = '0';
+    xMax!.value = '1000000';
+    yMin!.value = '0';
+    yMax!.value = '0';
+    zMin!.value = '0';
+    zMax!.value = '0';
+    step!.value = '1000000';
+    vxFix!.value = '5'; // km/s at run time
+    epoch!.value = '2026-09-01T00:00:00Z';
+    for (const inp of [xMin, xMax, yMin, yMax, zMin, zMax, step]) inp!.dispatchEvent(new Event('input'));
+
+    const runBtn = [...r.querySelectorAll('button')].find((b) => b.textContent === 'Run candidate search')! as HTMLButtonElement;
+    runBtn.click();
+
+    // The user edits the form AFTER running, before saving a row.
+    vxFix!.value = '999';
+    epoch!.value = '2027-06-01T00:00:00Z';
+
+    const saveAsBtn = [...r.querySelectorAll('button')].find((b) => b.textContent === 'Save as candidate')!;
+    saveAsBtn.click();
+
+    const saved = store.list().at(-1)!;
+    expect(saved.velocity.x).toBeCloseTo(5000, 3); // run-time 5 km/s, not 999
+    expect(saved.epoch).toBe(Math.floor(Date.parse('2026-09-01T00:00:00Z') / 1000));
+  });
+
   it('notes persist via storage and export uses the injected seam', () => {
     let exported: { filename: string; text: string } | null = null;
     mountCandidatesTab(r, {

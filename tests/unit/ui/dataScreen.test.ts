@@ -189,7 +189,7 @@ describe('mountDataScreen', () => {
   it('live burn display from burnStarted/burnEnded', () => {
     h.emit({ type: 'burnStarted', startTime: T0, endTime: T0 + 30, throttle: 1, scheduledId: null });
     expect(h.root.textContent).toMatch(/BURNING/);
-    h.emit({ type: 'burnEnded', endTime: T0 + 30, deltaVSpent: 15 });
+    h.emit({ type: 'burnEnded', endTime: T0 + 30, deltaVSpent: 15, scheduledId: null });
     expect(h.root.querySelector('.data-burn-card')).toBeNull();
   });
 

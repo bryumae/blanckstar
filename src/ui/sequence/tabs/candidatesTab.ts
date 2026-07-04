@@ -341,6 +341,11 @@ export function mountCandidatesTab(root: HTMLElement, deps: CandidatesTabDeps): 
   interface SearchRow {
     readonly index: number;
     readonly position: Vector3;
+    // Epoch + velocity captured at run time, so "Save as candidate" persists the
+    // values that produced this row rather than whatever the form holds when the
+    // button is clicked (the user may edit the fields after running the search).
+    readonly epoch: number;
+    readonly velocity: Vector3;
     readonly perMeasurement: Map<number, { rangeKm?: number; angleDeg?: number }>;
     readonly rms: number;
   }
@@ -373,7 +378,7 @@ export function mountCandidatesTab(root: HTMLElement, deps: CandidatesTabDeps): 
         if (angleRad !== undefined) entry.angleDeg = (angleRad * 180) / Math.PI;
         perMeasurement.set(r.measurementId, entry);
       }
-      rows.push({ index: i, position, perMeasurement, rms: result.rmsMismatch });
+      rows.push({ index: i, position, epoch, velocity, perMeasurement, rms: result.rmsMismatch });
     }
     lastRows = rows;
     renderSearchResults();
@@ -439,18 +444,14 @@ export function mountCandidatesTab(root: HTMLElement, deps: CandidatesTabDeps): 
       const saveBtn2 = document.createElement('button');
       saveBtn2.textContent = 'Save as candidate';
       saveBtn2.addEventListener('click', () => {
-        const epoch = parseEpoch(searchEpochF.input.value) ?? Math.floor(Date.now() / 1000);
-        const velocity: Vector3 = {
-          x: (parseFloat(vxFixF.input.value) || 0) * 1000,
-          y: (parseFloat(vyFixF.input.value) || 0) * 1000,
-          z: (parseFloat(vzFixF.input.value) || 0) * 1000,
-        };
+        // Use the epoch/velocity captured when this row was computed, not the
+        // live form (which the user may have edited since running the search).
         deps.candidates.save({
           id: freshId(),
           name: `search-${row.index}`,
-          epoch,
+          epoch: row.epoch,
           position: row.position,
-          velocity,
+          velocity: row.velocity,
           createdAt: Math.floor(Date.now() / 1000),
         });
       });

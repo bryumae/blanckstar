@@ -161,3 +161,31 @@ named, create/rename/delete, last-open) through the injected `StorageLike` seam
 - The old `src/sandbox/messages.ts` ping/pong scaffold is now superseded by
   `protocol.ts`; `main.ts` still imports it and is rewired by the orchestrator
   when it wires the bridge — the stub should be deleted then.
+
+## Addendum (PR #14 code review)
+
+Fixes to the correlation layer and the neutralization backstop found in review:
+
+- **Parameter-shadow layer now actually covers the forbidden set.** The
+  "delete-off-`self` **and** parameter shadowing **and** process boundary"
+  claim above was aspirational: `runner.ts`'s `SHADOWED_NAMES` listed only the
+  hint names (`debug`/`solveTransfer`/`autopilot`), so if deleting a
+  non-configurable global ever failed, layer 2 would not catch it. It now
+  includes every `FORBIDDEN_GLOBALS` name (deduped), making the layered claim
+  true rather than intended.
+- **`wait()` can no longer hang.** A `wait()` issued after the sim reached a
+  verdict (or to an already-past target) posted a `skipToTime` the sim
+  no-ops, so the waiter never settled. The bridge now tracks the terminal
+  verdict (`won`/`lost`, cleared on `ready`) and resolves such a `wait()`
+  immediately (time is frozen); the sim also emits a completed `skipProgress`
+  on a no-op skip as a second guard.
+- **Burn/error correlation is explicit, not positional.** The bridge uses the
+  new `BurnEndedEvent.scheduledId` (resolve an immediate `burn()` only on a
+  `scheduledId === null` end) and `ErrorEvent.command` (route a rejection to
+  the matching waiter), replacing FIFO/fixed-priority guesses that
+  mis-attributed when immediate and scheduled burns overlapped. See the
+  ADR-0001 addendum for the two additive fields.
+- **`predict()` parity.** The output-sample cadence is no longer fed into
+  `stepToBoundary`, so predicted trajectories integrate the sim's own grid
+  (burn boundaries + target) and match it regardless of `stepOut`; sample rows
+  are emitted at the first step endpoint at/after each output tick.

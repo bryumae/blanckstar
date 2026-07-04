@@ -112,7 +112,7 @@ export class Simulation {
 
   point(direction: Vector3): void {
     if (norm(direction) === 0) {
-      this.emit({ type: 'error', message: 'point: zero-length direction' });
+      this.emit({ type: 'error', message: 'point: zero-length direction', command: 'point' });
       return;
     }
     this.forward = normalize(direction);
@@ -121,11 +121,11 @@ export class Simulation {
 
   // Start a burn now for `duration` seconds at `throttle` along current forward.
   burn(throttle: number, duration: number): void {
-    if (!this.validateBurnParams(throttle, duration)) {
+    if (!this.validateBurnParams(throttle, duration, 'burn')) {
       return;
     }
     if (!this.burns.isWindowFree(this.simTime, duration)) {
-      this.emit({ type: 'error', message: 'burn: overlaps an active or scheduled burn' });
+      this.emit({ type: 'error', message: 'burn: overlaps an active or scheduled burn', command: 'burn' });
       return;
     }
     const active = this.burns.startActive(this.simTime, throttle, duration, this.forward, null);
@@ -140,19 +140,19 @@ export class Simulation {
   }
 
   scheduleBurn(startTime: number, direction: Vector3, throttle: number, duration: number): void {
-    if (!this.validateBurnParams(throttle, duration)) {
+    if (!this.validateBurnParams(throttle, duration, 'scheduleBurn')) {
       return;
     }
     if (startTime < this.simTime) {
-      this.emit({ type: 'error', message: 'scheduleBurn: startTime is in the past' });
+      this.emit({ type: 'error', message: 'scheduleBurn: startTime is in the past', command: 'scheduleBurn' });
       return;
     }
     if (norm(direction) === 0) {
-      this.emit({ type: 'error', message: 'scheduleBurn: zero-length direction' });
+      this.emit({ type: 'error', message: 'scheduleBurn: zero-length direction', command: 'scheduleBurn' });
       return;
     }
     if (!this.burns.isWindowFree(startTime, duration)) {
-      this.emit({ type: 'error', message: 'scheduleBurn: overlaps an active or scheduled burn' });
+      this.emit({ type: 'error', message: 'scheduleBurn: overlaps an active or scheduled burn', command: 'scheduleBurn' });
       return;
     }
     const burn = this.burns.schedule(startTime, direction, throttle, duration);
@@ -177,17 +177,19 @@ export class Simulation {
     if (this.burns.cancel(id)) {
       this.emit({ type: 'scheduledBurnCancelled', id });
     } else {
-      this.emit({ type: 'error', message: `cancelBurn: no scheduled burn ${id}` });
+      this.emit({ type: 'error', message: `cancelBurn: no scheduled burn ${id}`, command: 'cancelBurn' });
     }
   }
 
-  private validateBurnParams(throttle: number, duration: number): boolean {
+  // Shared by burn() and scheduleBurn(); `command` tags the emitted error so the
+  // bridge can route the rejection to the right waiter (§8.2 correlation).
+  private validateBurnParams(throttle: number, duration: number, command: 'burn' | 'scheduleBurn'): boolean {
     if (!(throttle >= 0 && throttle <= 1)) {
-      this.emit({ type: 'error', message: 'burn: throttle must be in [0,1]' });
+      this.emit({ type: 'error', message: 'burn: throttle must be in [0,1]', command });
       return false;
     }
     if (!(duration > 0)) {
-      this.emit({ type: 'error', message: 'burn: duration must be positive' });
+      this.emit({ type: 'error', message: 'burn: duration must be positive', command });
       return false;
     }
     return true;
@@ -220,7 +222,7 @@ export class Simulation {
     if (entry) {
       this.emit({ type: 'measurementAdded', measurement: entry });
     } else {
-      this.emit({ type: 'error', message: `annotateMeasurement: no measurement ${id}` });
+      this.emit({ type: 'error', message: `annotateMeasurement: no measurement ${id}`, command: 'annotateMeasurement' });
     }
   }
 
@@ -291,7 +293,12 @@ export class Simulation {
     // End the active burn if we've reached its end boundary (snapped exactly).
     if (active && this.simTime >= active.endTime) {
       this.burns.endActive();
-      this.emit({ type: 'burnEnded', endTime: this.simTime, deltaVSpent: this.deltaVSpent });
+      this.emit({
+        type: 'burnEnded',
+        endTime: this.simTime,
+        deltaVSpent: this.deltaVSpent,
+        scheduledId: active.scheduledId,
+      });
     }
 
     return this.checkVerdict();
@@ -302,7 +309,16 @@ export class Simulation {
   // interrupt/verdict. Steps are snapped onto targetTime too. Returns the final
   // StepResult of the run.
   skipToTime(targetTime: number, chunkSteps = 2000): StepResult {
-    if (targetTime <= this.simTime || this.over) {
+    // Already over: the terminal won/lost was emitted when the game ended; a
+    // caller (e.g. the sandbox wait() bridge) tracks that separately.
+    if (this.over) {
+      return NO_STEP;
+    }
+    // Target already reached: no stepping to do, but still surface a completed
+    // skipProgress so a waiter keyed to a past/now target resolves rather than
+    // hanging on an event that would otherwise never come (§8.2 wait()).
+    if (targetTime <= this.simTime) {
+      this.emit({ type: 'skipProgress', simTime: this.simTime, fraction: 1 });
       return NO_STEP;
     }
     const startTime = this.simTime;
@@ -312,6 +328,12 @@ export class Simulation {
     while (this.simTime < targetTime && !this.over) {
       const maxDt = targetTime - this.simTime;
       last = this.stepOnce(maxDt);
+      // A win/lose verdict already emitted won/lost + a final state in
+      // checkVerdict; stop here without also emitting a spurious `interrupted`
+      // (which the shell would render as "Interrupted: win" beside the modal).
+      if (last.over) {
+        return last;
+      }
       if (last.interrupt) {
         this.warp = 0;
         this.emit({ type: 'interrupted', reason: last.interrupt, simTime: this.simTime });

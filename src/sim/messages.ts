@@ -190,6 +190,11 @@ export interface BurnEndedEvent {
   readonly type: 'burnEnded';
   readonly endTime: number;
   readonly deltaVSpent: number; // cumulative after this burn
+  // The scheduled handle this burn came from, or null for an immediate burn().
+  // Lets the bridge correlate a burnEnded to the awaiting burn() waiter without
+  // resolving it on an unrelated scheduled burn's completion (FIFO is ambiguous
+  // when an immediate and a scheduled burn overlap).
+  readonly scheduledId: number | null;
 }
 
 export interface ScheduledBurnAddedEvent {
@@ -237,6 +242,12 @@ export interface EphemerisResultEvent {
 export interface ErrorEvent {
   readonly type: 'error';
   readonly message: string;
+  // The command that produced this error, when it originated from a specific
+  // main->sim command. Lets the bridge route the rejection to the matching
+  // pending waiter instead of guessing by fixed priority (which mis-attributes
+  // when several errable commands are outstanding at once). Absent for errors
+  // not tied to a single command.
+  readonly command?: SimCommand['type'];
 }
 
 export type SimEvent =
