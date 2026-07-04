@@ -10,3 +10,4 @@
       - precision errors     
       - doppler effect calculations     
       - other calculations
+- when comes close to earth, use google maps API
