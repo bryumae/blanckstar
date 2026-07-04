@@ -12,16 +12,13 @@ import type {
   BurnEndedEvent,
   BurnStartedEvent,
   EphemerisResultEvent,
-  InterruptedEvent,
   MeasurementAddedEvent,
   ScheduledBurnAddedEvent,
   ScheduledBurnCancelledEvent,
   SimCommand,
   SimEvent,
-  SkipProgressEvent,
 } from '../../sim/messages';
-import type { RadioLockData, ScheduledBurn, ShipState, WarpFactor } from '../../sim/types';
-import { WARP_FACTORS } from '../../sim/types';
+import type { RadioLockData, ScheduledBurn, ShipState } from '../../sim/types';
 import {
   insertedOrbitalElements,
   runClosestApproachChunked,
@@ -67,13 +64,10 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
   let ship: ShipState | null = null;
   let simTime = 0;
   let missionElapsed = 0;
-  let warp: WarpFactor = 0;
   let scheduledBurns: ScheduledBurn[] = [];
   let liveBurn: { startTime: number; endTime: number; throttle: number } | null = null;
   let lastRadioLock: RadioLockData | null = null;
   let radioLockCount = 0;
-  let skipFraction: number | null = null;
-  let interruptNote = '';
 
   // ==================== 1. Radio / Earth beacon ====================
   const radio = card('data-card--span-4', 'RADIO · EARTH BEACON');
@@ -247,95 +241,7 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
     }
   }
 
-  // ==================== 4. Time controls ====================
-  const timeCard = card('data-card--span-4', 'TIME CONTROLS');
-  const warpLabel = document.createElement('div');
-  warpLabel.className = 'data-hero-label';
-  warpLabel.style.marginBottom = '7px';
-  warpLabel.textContent = 'WARP · substepped per tier';
-  const warpRow = document.createElement('div');
-  warpRow.className = 'data-warp-row';
-  const warpButtons = new Map<WarpFactor, HTMLButtonElement>();
-  const warpLabels: Readonly<Record<WarpFactor, string>> = {
-    0: '⏸',
-    1: '1×',
-    10: '10×',
-    100: '100×',
-    1000: '1k',
-    10000: '10k',
-  };
-  for (const w of WARP_FACTORS) {
-    const btn = document.createElement('button');
-    btn.className = 'data-warp-btn';
-    btn.textContent = warpLabels[w];
-    btn.addEventListener('click', () => deps.send({ type: 'setWarp', factor: w }));
-    warpButtons.set(w, btn);
-    warpRow.appendChild(btn);
-  }
-
-  const skipLabel = document.createElement('div');
-  skipLabel.className = 'data-hero-label';
-  skipLabel.style.marginBottom = '7px';
-  skipLabel.textContent = 'SKIP-TO-TIME · wait(seconds)';
-  const skipRow = document.createElement('div');
-  skipRow.className = 'data-skip-row';
-  const skipInput = document.createElement('input');
-  skipInput.className = 'data-input';
-  skipInput.type = 'number';
-  skipInput.min = '0';
-  skipInput.value = '1';
-  const skipUnit = document.createElement('select');
-  skipUnit.className = 'data-select';
-  for (const u of ['hours', 'days']) {
-    const opt = document.createElement('option');
-    opt.value = u;
-    opt.textContent = u;
-    skipUnit.appendChild(opt);
-  }
-  const skipBtn = document.createElement('button');
-  skipBtn.className = 'data-btn';
-  skipBtn.textContent = '▸▸ Advance';
-  skipBtn.addEventListener('click', () => {
-    const n = Number(skipInput.value);
-    if (!Number.isFinite(n) || n <= 0) return;
-    const seconds = skipUnit.value === 'days' ? n * 86400 : n * 3600;
-    deps.send({ type: 'skipToTime', targetTime: simTime + seconds });
-  });
-  skipRow.append(skipInput, skipUnit, skipBtn);
-
-  const skipProgressWrap = document.createElement('div');
-  skipProgressWrap.className = 'data-skip-progress';
-  const skipProgressBar = document.createElement('div');
-  skipProgressBar.className = 'data-skip-progress-bar';
-  skipProgressWrap.appendChild(skipProgressBar);
-
-  const interruptNoteEl = document.createElement('div');
-  interruptNoteEl.className = 'data-interrupt-note';
-
-  const timeNote = document.createElement('div');
-  timeNote.className = 'data-note';
-  timeNote.textContent =
-    'Auto-interrupts on: scheduled burn start · SOI entry · win · failure · wait() completion.';
-
-  timeCard.body.append(
-    warpLabel,
-    warpRow,
-    skipLabel,
-    skipRow,
-    skipProgressWrap,
-    interruptNoteEl,
-    timeNote,
-  );
-
-  function renderTime(): void {
-    for (const [w, btn] of warpButtons) {
-      btn.classList.toggle('is-active', w === warp);
-    }
-    skipProgressBar.style.width = `${skipFraction !== null ? (skipFraction * 100).toFixed(1) : 0}%`;
-    interruptNoteEl.textContent = interruptNote;
-  }
-
-  // ==================== 5. Inserted-state analysis ====================
+  // ==================== 4. Inserted-state analysis ====================
   const analysisCard = card('data-card--span-5', 'INSERTED-STATE ANALYSIS');
   const refToggle = document.createElement('div');
   refToggle.className = 'data-toggle-group';
@@ -558,7 +464,7 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
   });
 
   // ==================== assembly ====================
-  root.append(radio.el, shipCard.el, timeCard.el, burnsCard.el, analysisCard.el);
+  root.append(radio.el, shipCard.el, burnsCard.el, analysisCard.el);
 
   renderCandidateSelect();
   const unsubscribeCandidates = deps.candidates.subscribe(renderCandidateSelect);
@@ -567,7 +473,6 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
     renderRadio();
     renderShip();
     renderBurns();
-    renderTime();
   }
   render();
 
@@ -578,15 +483,12 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
         radioLockCount = 0;
         scheduledBurns = [];
         liveBurn = null;
-        skipFraction = null;
-        interruptNote = '';
         render();
         break;
       case 'state': {
         ship = e.ship;
         simTime = e.simTime;
         missionElapsed = e.missionElapsed;
-        warp = e.warp;
         render();
         break;
       }
@@ -623,28 +525,10 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
         renderBurns();
         break;
       }
-      case 'interrupted': {
-        const ev = e as InterruptedEvent;
-        interruptNote = `Interrupted: ${ev.reason} @ ${fmtUtc(ev.simTime)}`;
-        skipFraction = null;
-        renderTime();
-        break;
-      }
-      case 'skipProgress': {
-        const ev = e as SkipProgressEvent;
-        skipFraction = ev.fraction;
-        renderTime();
-        break;
-      }
       case 'ephemerisResult': {
         void (e as EphemerisResultEvent);
         break;
       }
-      case 'won':
-      case 'lost':
-        skipFraction = null;
-        renderTime();
-        break;
       default:
         break;
     }

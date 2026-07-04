@@ -116,3 +116,13 @@ Running list of comments/problems found while manually testing the app
      "named" if its catalog entry has a real name (e.g. Toliman), else
      "numeric" (shows as `star:NNNN`) — the numeric ones are what flood
      the list, so they're now independently filterable.
+
+9. **Header: TIME WARP took too much space, wrapping the beacon/scenario
+   badges onto a second line.** Collapsed the always-visible 6-button warp
+   row into a compact "WARP ⏸/1×/..." button showing only the current
+   state; clicking or hovering it opens a floating panel (absolute-
+   positioned, doesn't reflow the header) with the full warp row plus
+   SKIP-TO-TIME (moved here from Data's now-redundant TIME CONTROLS card,
+   which is deleted — same "advance simulation time" concern, one place).
+   `src/ui/shell/index.ts`/`shell.css`; `src/ui/data/index.ts` no longer
+   tracks `warp`/`skipFraction`/`interruptNote` at all.

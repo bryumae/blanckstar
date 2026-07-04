@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mountDataScreen, type DataScreenHandle } from '../../../src/ui/data/index';
 import type { SimCommand, SimEvent } from '../../../src/sim/messages';
-import type { ShipState, WarpFactor } from '../../../src/sim/types';
+import type { ShipState } from '../../../src/sim/types';
 import { createCandidateStore, type CandidateStore } from '../../../src/ui/candidateStore';
 import type { StorageLike } from '../../../src/net/storage';
 import type { EphemerisData } from '../../../src/core/ephemerisTypes';
@@ -131,16 +131,17 @@ describe('mountDataScreen', () => {
     h = setup();
   });
 
-  it('renders the five remaining module cards', () => {
+  it('renders the four remaining module cards', () => {
     const titles = [...h.root.querySelectorAll('.data-card-title')].map((el) => el.textContent);
     expect(titles.some((t) => t?.includes('RADIO'))).toBe(true);
     expect(titles.some((t) => t?.includes('SHIP DATA'))).toBe(true);
     expect(titles.some((t) => t?.includes('SCHEDULED BURNS'))).toBe(true);
-    expect(titles.some((t) => t?.includes('TIME CONTROLS'))).toBe(true);
     expect(titles.some((t) => t?.includes('INSERTED-STATE'))).toBe(true);
-    // Ephemeris and Measurement Log are now their own first-level screens.
+    // Ephemeris and Measurement Log are their own first-level screens; Time
+    // Controls (warp + skip-to-time) moved into the shell header.
     expect(titles.some((t) => t?.includes('EPHEMERIS'))).toBe(false);
     expect(titles.some((t) => t?.includes('MEASUREMENT LOG'))).toBe(false);
+    expect(titles.some((t) => t?.includes('TIME CONTROLS'))).toBe(false);
   });
 
   it('radio lock button sends radioLockEarth; measurementAdded round-trips to the display', () => {
@@ -169,23 +170,6 @@ describe('mountDataScreen', () => {
     expect(hero.textContent).toMatch(/km/);
     const statusBadge = h.root.querySelector('.data-status-badge')!;
     expect(statusBadge.textContent).toMatch(/LEVEL 1 LOCK/);
-  });
-
-  it('warp buttons send setWarp and highlight from state.warp', () => {
-    const warpBtns = [...h.root.querySelectorAll('.data-warp-btn')];
-    const tenXBtn = warpBtns.find((b) => b.textContent === '10×')! as HTMLButtonElement;
-    tenXBtn.click();
-    expect(h.sent).toContainEqual({ type: 'setWarp', factor: 10 });
-
-    h.emit({
-      type: 'state',
-      simTime: T0,
-      missionElapsed: 0,
-      warp: 10 as WarpFactor,
-      ship: makeShipState(),
-      bodies: { sun: { x: 0, y: 0, z: 0 }, earth: { x: AU, y: 0, z: 0 }, moon: { x: 0, y: 0, z: 0 }, mars: { x: 0, y: 0, z: 0 }, venus: { x: 0, y: 0, z: 0 }, jupiter: { x: 0, y: 0, z: 0 } },
-    });
-    expect(tenXBtn.classList.contains('is-active')).toBe(true);
   });
 
   it('scheduled burn add/cancel flow', () => {

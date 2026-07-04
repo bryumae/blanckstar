@@ -16,7 +16,7 @@ export type ScreenId = 'telescope' | 'sequence' | 'data' | 'ephemeris' | 'measur
 const SCREENS: readonly { id: ScreenId; label: string; sub: string; icon: string }[] = [
   { id: 'telescope', label: 'Telescope', sub: 'Outside view · identify · measure', icon: '◎' },
   { id: 'sequence', label: 'Sequence & Calc', sub: 'Scripts · calculator · predictor', icon: '▸' },
-  { id: 'data', label: 'Data', sub: 'Radio · ship · burns · time', icon: '▤' },
+  { id: 'data', label: 'Data', sub: 'Radio · ship · burns', icon: '▤' },
   { id: 'ephemeris', label: 'Ephemeris', sub: 'Heliocentric state query', icon: '⊙' },
   { id: 'measurementLog', label: 'Measurement Log', sub: 'Append-only · this run', icon: '▥' },
 ];
@@ -95,11 +95,37 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
   const metBlock = clockBlock('MISSION ELAPSED', true);
   clocks.append(utcBlock.el, metBlock.el);
 
+  // Compact by default (repo issue: the full button row wrapped the
+  // beacon/scenario badges onto a second line) — click or hover reveals the
+  // full warp row plus skip-to-time (moved here from Data's now-removed
+  // TIME CONTROLS card, since it's the same "advance simulation time"
+  // concern).
+  let latestSimTime = 0;
   const warp = document.createElement('div');
   warp.className = 'shell-warp';
-  const warpLabel = document.createElement('div');
-  warpLabel.className = 'shell-warp-label';
-  warpLabel.textContent = 'TIME WARP';
+
+  const warpCompact = document.createElement('button');
+  warpCompact.type = 'button';
+  warpCompact.className = 'shell-warp-compact';
+  const warpCompactTag = document.createElement('span');
+  warpCompactTag.className = 'shell-warp-compact-tag';
+  warpCompactTag.textContent = 'WARP';
+  const warpCompactValue = document.createElement('span');
+  warpCompactValue.className = 'shell-warp-compact-value';
+  warpCompactValue.textContent = WARP_LABELS[0];
+  warpCompact.append(warpCompactTag, warpCompactValue);
+  warpCompact.addEventListener('click', (e) => {
+    e.stopPropagation();
+    warp.classList.toggle('is-open');
+  });
+
+  const warpPanel = document.createElement('div');
+  warpPanel.className = 'shell-warp-panel';
+  warpPanel.addEventListener('click', (e) => e.stopPropagation());
+
+  const warpPanelLabel = document.createElement('div');
+  warpPanelLabel.className = 'shell-warp-label';
+  warpPanelLabel.textContent = 'TIME WARP · substepped per tier';
   const warpGroup = document.createElement('div');
   warpGroup.className = 'shell-warp-group';
   const warpButtons = new Map<WarpFactor, HTMLButtonElement>();
@@ -112,7 +138,62 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
     warpGroup.appendChild(btn);
     warpButtons.set(factor, btn);
   }
-  warp.append(warpLabel, warpGroup);
+
+  const skipLabel = document.createElement('div');
+  skipLabel.className = 'shell-warp-label';
+  skipLabel.textContent = 'SKIP-TO-TIME · wait(seconds)';
+  const skipRow = document.createElement('div');
+  skipRow.className = 'shell-warp-skip-row';
+  const skipInput = document.createElement('input');
+  skipInput.className = 'shell-warp-skip-input';
+  skipInput.type = 'number';
+  skipInput.min = '0';
+  skipInput.value = '1';
+  const skipUnit = document.createElement('select');
+  skipUnit.className = 'shell-warp-skip-select';
+  for (const u of ['hours', 'days']) {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    skipUnit.appendChild(opt);
+  }
+  const skipBtn = document.createElement('button');
+  skipBtn.type = 'button';
+  skipBtn.className = 'shell-warp-skip-btn';
+  skipBtn.textContent = '▸▸ Advance';
+  skipBtn.addEventListener('click', () => {
+    const n = Number(skipInput.value);
+    if (!Number.isFinite(n) || n <= 0) return;
+    const seconds = skipUnit.value === 'days' ? n * 86400 : n * 3600;
+    deps.send({ type: 'skipToTime', targetTime: latestSimTime + seconds });
+  });
+  skipRow.append(skipInput, skipUnit, skipBtn);
+
+  const skipProgressWrap = document.createElement('div');
+  skipProgressWrap.className = 'shell-warp-skip-progress';
+  const skipProgressBar = document.createElement('div');
+  skipProgressBar.className = 'shell-warp-skip-progress-bar';
+  skipProgressWrap.appendChild(skipProgressBar);
+
+  const warpInterruptNoteEl = document.createElement('div');
+  warpInterruptNoteEl.className = 'shell-warp-interrupt-note';
+
+  const warpNote = document.createElement('div');
+  warpNote.className = 'shell-warp-note';
+  warpNote.textContent =
+    'Auto-interrupts on: scheduled burn start · SOI entry · win · failure · wait() completion.';
+
+  warpPanel.append(
+    warpPanelLabel,
+    warpGroup,
+    skipLabel,
+    skipRow,
+    skipProgressWrap,
+    warpInterruptNoteEl,
+    warpNote,
+  );
+  warp.append(warpCompact, warpPanel);
+  window.addEventListener('click', () => warp.classList.remove('is-open'));
 
   const status = document.createElement('div');
   status.className = 'shell-status';
@@ -399,11 +480,15 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
       case 'ready':
         beaconLocked = false;
         updateBeacon();
+        skipProgressBar.style.width = '0%';
+        warpInterruptNoteEl.textContent = '';
         break;
       case 'state':
         utcBlock.value.textContent = fmtUtcClock(event.simTime);
         metBlock.value.textContent = fmtMet(event.missionElapsed);
+        latestSimTime = event.simTime;
         for (const [factor, btn] of warpButtons) btn.classList.toggle('is-active', factor === event.warp);
+        warpCompactValue.textContent = WARP_LABELS[event.warp];
         vitalEngine.textContent = event.ship.burning ? 'BURN' : 'idle';
         vitalDeltaV.textContent = fmtKmPerS(event.ship.deltaVSpent);
         vitalSimMode.textContent = event.warp === 0 ? 'paused' : `${event.warp}×`;
@@ -414,11 +499,20 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
           updateBeacon();
         }
         break;
+      case 'interrupted':
+        warpInterruptNoteEl.textContent = `Interrupted: ${event.reason} @ ${fmtUtcClock(event.simTime)}`;
+        skipProgressBar.style.width = '0%';
+        break;
+      case 'skipProgress':
+        skipProgressBar.style.width = `${(event.fraction * 100).toFixed(1)}%`;
+        break;
       case 'won':
         showWon(event.stats);
+        skipProgressBar.style.width = '0%';
         break;
       case 'lost':
         showLost(event.reason);
+        skipProgressBar.style.width = '0%';
         break;
     }
   };
