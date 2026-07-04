@@ -319,10 +319,12 @@ body {
  * one, `.shell-screen:not(.is-active)` must win regardless of import order.
  * A single class-selector `display: none` isn't specific enough to beat a
  * same-specificity `display: grid` declared later. */
+/* No flex-direction here: each screen's root class declares its own layout
+ * (telescope is a row: viewport + right sidebar; sequence is a column; data
+ * is a grid). */
 .shell-screen {
   position: absolute;
   inset: 0;
-  flex-direction: column;
   min-height: 0;
 }
 
