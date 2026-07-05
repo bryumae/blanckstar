@@ -1,0 +1,401 @@
+/* Sequence & Calculation screen (mvp0_spec.md §7.6, §7.7, §7.9). Vanilla CSS,
+ * no framework (repo rule 5) — hand-ported from
+ * docs/design/mission-interface-template.html's Sequence section, styled via the
+ * shared tokens in src/ui/styles.css. */
+@import '../styles.css';
+
+.sequence-screen {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+/* ---- tab bar ---- */
+.sequence-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-panel-header);
+}
+
+.sequence-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.sequence-tab.is-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+.sequence-tab:hover:not(.is-active) {
+  color: var(--text-tertiary);
+}
+
+.sequence-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+/* Tab content stylesheets (tabs.css's .calc-tab/.cand-tab/.pred-tab, and
+ * .script-console below) each set their own `display` on the panel's root
+ * class — since those can load in any order relative to this file,
+ * `.sequence-panel:not(.is-active)` must win regardless of import order (same
+ * fix as `.shell-screen:not(.is-active)` in shell.css). A single
+ * class-selector `display: none` isn't specific enough to beat a
+ * same-specificity `display: flex/grid` declared later. */
+.sequence-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.sequence-panel:not(.is-active) {
+  display: none !important;
+}
+
+.sequence-placeholder {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+}
+
+/* ---- Script Console tab ---- */
+.script-console {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+/* script list rail */
+.script-list {
+  flex: 0 0 190px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-primary);
+  background: var(--bg-panel-header);
+  min-height: 0;
+}
+
+.script-list-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-caps);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.script-list-items {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+}
+
+.script-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-row);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  color: var(--text-tertiary);
+}
+
+.script-list-item.is-active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.script-list-item .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.script-list-item .del {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--fs-body);
+}
+
+.script-list-item .del:hover {
+  color: var(--status-danger);
+}
+
+/* editor column */
+.script-editor-col {
+  flex: 1 1 55%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-primary);
+  min-width: 0;
+}
+
+.script-editor-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-body);
+}
+
+.script-editor-header .title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.script-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-heading);
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  padding: 2px 6px;
+}
+
+.script-name:focus {
+  border-color: var(--border-secondary);
+  background: var(--bg-input);
+  outline: none;
+}
+
+.script-badge {
+  font-size: 9px;
+  letter-spacing: var(--ls-caps);
+  color: var(--status-ok);
+  border: 1px solid var(--border-primary);
+  padding: 2px 6px;
+  border-radius: var(--radius-tag);
+}
+
+.script-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.script-btn {
+  border-radius: var(--radius-control);
+  padding: 6px 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  font-family: var(--font-ui);
+}
+
+.script-btn.run {
+  background: #123a2c;
+  color: var(--status-ok-bright);
+  border-color: #1f5c44;
+}
+
+.script-btn.stop {
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+}
+
+.script-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* editor: textarea with a line-number gutter overlay */
+.script-editor {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  background: var(--bg-viewport);
+  overflow: hidden;
+}
+
+.script-gutter {
+  flex: 0 0 auto;
+  width: 44px;
+  padding: 12px 0;
+  text-align: right;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  user-select: none;
+  overflow: hidden;
+}
+
+.script-gutter div {
+  padding-right: 14px;
+}
+
+.script-textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px 14px 12px 0;
+  border: none;
+  resize: none;
+  background: transparent;
+  color: #c9d4e2;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  tab-size: 2;
+  outline: none;
+  white-space: pre;
+  overflow: auto;
+}
+
+/* console output column */
+/* Closed by default so the editor gets the full width — opens when Run is
+ * pressed, or stays closed until the player wants it (repo issue: console
+ * output should not eat into code editing space unless actually running). */
+.script-console-out {
+  display: none;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-viewport);
+}
+
+.script-console-out.is-open {
+  display: flex;
+  flex: 1 1 45%;
+}
+
+.script-console-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-body);
+}
+
+.script-console-header .label {
+  font-size: 10px;
+  letter-spacing: var(--ls-caps);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.script-console-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.script-console-status {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.script-console-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.script-console-close:hover {
+  color: var(--status-danger);
+  border-color: var(--status-danger);
+  background: var(--bg-active);
+}
+
+.script-console-status.is-running {
+  color: var(--status-ok-bright);
+}
+
+.script-console-status.is-unresponsive {
+  color: var(--status-warn-bright);
+}
+
+.script-console-status.is-error {
+  color: var(--status-danger);
+}
+
+.script-console-lines {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 12px 15px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.72;
+  min-height: 0;
+}
+
+.script-console-line {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.script-console-line .prefix {
+  color: var(--text-faint);
+  flex: 0 0 auto;
+}
+
+.script-console-line .text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  color: #c9d4e2;
+}
+
+.script-console-line.log .text {
+  color: #c9d4e2;
+}
+.script-console-line.event .text {
+  color: var(--text-tertiary);
+}
+.script-console-line.ok .text {
+  color: var(--status-ok-bright);
+}
+.script-console-line.error .text {
+  color: var(--status-danger);
+}
+
+.script-console-idle {
+  color: var(--text-faint);
+}

@@ -24,4 +24,12 @@ describe('vector3', () => {
   it('computes angle between vectors', () => {
     expect(angleBetween(vec3(1, 0, 0), vec3(0, 1, 0))).toBeCloseTo(Math.PI / 2);
   });
+
+  it('clamps float error on near-parallel vectors instead of returning NaN', () => {
+    // Un-normalized near-parallel vectors whose normalized dot exceeds 1 by epsilon.
+    const a = vec3(0.1 + 0.2, 0.3, 0.7); // 0.30000000000000004
+    expect(angleBetween(a, a)).toBeCloseTo(0, 6);
+    expect(angleBetween(a, mul(a, -1))).toBeCloseTo(Math.PI);
+    expect(Number.isNaN(angleBetween(vec3(1e-8, 1e8, 3), vec3(1e-8, 1e8, 3)))).toBe(false);
+  });
 });

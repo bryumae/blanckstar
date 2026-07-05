@@ -43,5 +43,7 @@ export function normalize(a: Vector3): Vector3 {
 }
 
 export function angleBetween(a: Vector3, b: Vector3): number {
-  return Math.acos(dot(normalize(a), normalize(b)));
+  // Clamp: float error can push the dot of near-parallel unit vectors
+  // past ±1, where acos returns NaN.
+  return Math.acos(Math.min(1, Math.max(-1, dot(normalize(a), normalize(b)))));
 }
