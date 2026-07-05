@@ -116,11 +116,30 @@ describe('phaseAngle / phaseFactor', () => {
 });
 
 describe('reflectedBrightness', () => {
-  it('scales with phaseFactor and 1/d^2', () => {
+  it('reads 1 at full phase when both distances equal the reference (1 AU)', () => {
     const ref = 1.5e11;
-    const full = reflectedBrightness(ref, ref, 0);
-    const dark = reflectedBrightness(ref, ref, Math.PI);
+    const full = reflectedBrightness(ref, ref, ref, 0);
+    const dark = reflectedBrightness(ref, ref, ref, Math.PI);
     expect(full).toBeCloseTo(1, 9);
     expect(dark).toBeCloseTo(0, 9);
+  });
+
+  it('scales as 1/d^2 in observer distance', () => {
+    const ref = 1.5e11;
+    const near = reflectedBrightness(ref, ref, ref, 0);
+    const far = reflectedBrightness(2 * ref, ref, ref, 0);
+    expect(far).toBeCloseTo(near / 4, 9);
+  });
+
+  it('falls off as 1/solarDistance^2 (a body twice as far from the Sun is 1/4 as lit)', () => {
+    const ref = 1.5e11;
+    const nearSun = reflectedBrightness(ref, ref, ref, 0);
+    const farSun = reflectedBrightness(ref, 2 * ref, ref, 0);
+    expect(farSun).toBeCloseTo(nearSun / 4, 9);
+  });
+
+  it('returns +Infinity for a degenerate (<=0) distance', () => {
+    expect(reflectedBrightness(0, 1e11, 1e11, 0)).toBe(Number.POSITIVE_INFINITY);
+    expect(reflectedBrightness(1e11, 0, 1e11, 0)).toBe(Number.POSITIVE_INFINITY);
   });
 });

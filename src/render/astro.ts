@@ -82,12 +82,24 @@ export function phaseFactor(phaseRad: number): number {
   return (1 + Math.cos(phaseRad)) / 2;
 }
 
-// Reflected brightness ∝ phaseFactor / d^2, normalized against a reference
-// distance so the numbers stay in a convenient range (matches sunBrightness's
-// normalization convention).
-export function reflectedBrightness(distanceMeters: number, referenceDistance: number, phase: number): number {
-  if (distanceMeters <= 0) return Number.POSITIVE_INFINITY;
-  return (phaseFactor(phase) * referenceDistance * referenceDistance) / (distanceMeters * distanceMeters);
+// Reflected brightness of a body seen from the ship (mvp0_spec.md §7.1:
+// `reflected × phase / d²`). The reflected term is the sunlight the body
+// actually receives, which falls off as 1/solarDistance² — so a body twice as
+// far from the Sun is a quarter as illuminated before the observer-distance and
+// phase terms apply. Both distances are normalized against `referenceDistance`
+// (1 AU) so a body at 1 AU from the Sun seen from 1 AU away at full phase reads
+// 1 (matching sunBrightness's convention). Ignoring the solar-distance term (as
+// the previous fixed-1-AU normalization did) modelled every body as receiving
+// Earth-level sunlight, making the outer planets far too bright.
+export function reflectedBrightness(
+  distanceMeters: number,
+  solarDistanceMeters: number,
+  referenceDistance: number,
+  phase: number,
+): number {
+  if (distanceMeters <= 0 || solarDistanceMeters <= 0) return Number.POSITIVE_INFINITY;
+  const incident = (referenceDistance * referenceDistance) / (solarDistanceMeters * solarDistanceMeters);
+  return (phaseFactor(phase) * incident * referenceDistance * referenceDistance) / (distanceMeters * distanceMeters);
 }
 
 // ---- Local body radii not present in src/core/constants.ts (Mars, Venus,

@@ -104,6 +104,21 @@ describe('WarpDriver pacing (§6)', () => {
     expect(activeTicks()).toBe(0);
   });
 
+  it('zeroes warp when a scheduled burn interrupts an active warp (§6)', () => {
+    const { dispatcher, advanceWall, pump } = harness();
+    dispatcher.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });
+    const start = dispatcher.sim.getSimTime() + 60;
+    dispatcher.handle({ type: 'scheduleBurn', startTime: start, direction: { x: 0, y: 1, z: 0 }, throttle: 0.8, duration: 100 });
+    dispatcher.handle({ type: 'setWarp', factor: 100 });
+    expect(dispatcher.sim.getWarp()).toBe(100);
+    // Advance enough wall time (×100 warp) to reach the scheduled start.
+    advanceWall(2000);
+    pump();
+    // The burn interrupt must leave warp at 0 (paused), not the stale 100 — the
+    // shell reads getWarp()/state.warp to show the active warp factor.
+    expect(dispatcher.sim.getWarp()).toBe(0);
+  });
+
   it('throttles state emission to ~10 Hz wall time', () => {
     const { c, dispatcher, advanceWall, pump } = harness();
     dispatcher.handle({ type: 'init', ephemeris: eph, seed: cruiseSeed(eph, epoch) });

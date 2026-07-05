@@ -18,6 +18,24 @@ export interface Starfield {
   update(cameraPosition: THREE.Vector3): void;
 }
 
+// THREE.PointsMaterial hard-codes `gl_PointSize = size` from the material's
+// scalar `size` uniform, ignoring any per-vertex attribute — so a plain
+// per-star `size` attribute renders nothing (every point stays uniform). Patch
+// the compiled vertex shader to read a per-vertex `aSize` attribute instead, so
+// brighter stars (mapped through magnitudeToSize) render larger. Exported and
+// pure (operates on the shader source strings) so the wiring is unit-testable
+// without a live WebGL context. Returns whether the expected injection point
+// was found (guards against a silent no-op if THREE's shader chunk changes).
+export function patchStarSizeShader(shader: { vertexShader: string }): boolean {
+  const marker = 'gl_PointSize = size;';
+  if (!shader.vertexShader.includes(marker)) return false;
+  shader.vertexShader = `attribute float aSize;\n${shader.vertexShader}`.replace(
+    marker,
+    'gl_PointSize = aSize;',
+  );
+  return true;
+}
+
 export function createStarfield(catalog: readonly StarCatalogEntry[]): Starfield {
   const count = catalog.length;
   const positions = new Float32Array(count * 3);
@@ -42,7 +60,7 @@ export function createStarfield(catalog: readonly StarCatalogEntry[]): Starfield
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
 
   const material = new THREE.PointsMaterial({
     size: 2,
@@ -51,6 +69,17 @@ export function createStarfield(catalog: readonly StarCatalogEntry[]): Starfield
     transparent: true,
     depthWrite: false,
   });
+  // Wire the per-vertex aSize attribute into gl_PointSize (see patchStarSizeShader).
+  // Warn loudly if the injection point is gone (a THREE upgrade renaming the
+  // PointsMaterial vertex chunk) — otherwise stars silently revert to uniform
+  // size with no signal, since the unit tests exercise a synthetic shader string
+  // rather than THREE's real compiled source.
+  material.onBeforeCompile = (shader) => {
+    if (!patchStarSizeShader(shader)) {
+      // eslint-disable-next-line no-console
+      console.warn('Starfield: per-star size shader patch failed (THREE PointsMaterial chunk changed?); stars render at uniform size.');
+    }
+  };
 
   const points = new THREE.Points(geometry, material);
   points.frustumCulled = false;
