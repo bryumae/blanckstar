@@ -4,7 +4,7 @@
 // logic (independently testable) from the THREE.js raycast plumbing that
 // feeds it.
 import * as THREE from 'three';
-import type { Vector3 } from '../core/vector3';
+import { dot, normalize, norm, type Vector3 } from '../core/vector3';
 import type { BodyId, IdentifiedObject } from './types';
 
 export interface PickCandidate {
@@ -19,20 +19,26 @@ export interface PickCandidate {
 // list of candidate directions, return the candidate with the smallest
 // angle to the ray, provided it's within maxAngleRad — otherwise null (click
 // missed everything). Angle compared via dot product (monotonic, avoids
-// per-candidate acos calls).
+// per-candidate acos calls). Candidate directions are trusted to already be
+// unit-length — that's the PickCandidate contract (see field doc above),
+// upheld by its only producers (apparentDirection, raDecToUnit) — so this
+// hot loop (run over the full star catalog on every click) doesn't re-derive
+// it per candidate. The ray is normalized once since it's the one input this
+// module doesn't control the construction of.
 export function pickNearest(
   rayDirection: Vector3,
   candidates: readonly PickCandidate[],
   maxAngleRad: number,
 ): PickCandidate | null {
   if (candidates.length === 0) return null;
+  const ray = norm(rayDirection) === 0 ? rayDirection : normalize(rayDirection);
   const minDot = Math.cos(maxAngleRad);
   let best: PickCandidate | null = null;
   let bestDot = -Infinity;
   for (const c of candidates) {
-    const dot = rayDirection.x * c.direction.x + rayDirection.y * c.direction.y + rayDirection.z * c.direction.z;
-    if (dot > bestDot) {
-      bestDot = dot;
+    const d = dot(ray, c.direction);
+    if (d > bestDot) {
+      bestDot = d;
       best = c;
     }
   }

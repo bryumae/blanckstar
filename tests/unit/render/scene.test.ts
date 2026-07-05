@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   OUTSIDE_FOV_DEG,
   TELESCOPE_MAX_FOV_DEG,
@@ -6,8 +6,29 @@ import {
   clampFov,
   clampPitch,
   createScene,
+  createTelescopeViewport,
   yawPitchToLookVector,
 } from '../../../src/render/scene';
+import type { EphemerisData } from '../../../src/core/ephemerisTypes';
+
+function makeEphemeris(): EphemerisData {
+  const t0 = 0;
+  const dt = 86400;
+  const zero: readonly [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
+  const earth: readonly [number, number, number, number, number, number] = [1.5e11, 0, 0, 0, 0, 0];
+  return {
+    frame: 'heliocentric-ecliptic-j2000',
+    units: { position: 'm', velocity: 'm/s', time: 's' },
+    bodies: {
+      sun: { t0, dt, samples: [zero, zero] },
+      earth: { t0, dt, samples: [earth, earth] },
+      moon: { t0, dt, samples: [earth, earth] },
+      mars: { t0, dt, samples: [earth, earth] },
+      venus: { t0, dt, samples: [earth, earth] },
+      jupiter: { t0, dt, samples: [earth, earth] },
+    },
+  };
+}
 
 describe('createScene WebGL resilience', () => {
   it('returns a null renderer (not a throw) when no WebGL context is available', () => {
@@ -90,5 +111,54 @@ describe('yawPitchToLookVector', () => {
     expect(v.x).toBeCloseTo(0, 9);
     expect(v.y).toBeCloseTo(1, 9);
     expect(v.z).toBeCloseTo(0, 9);
+  });
+});
+
+describe('createTelescopeViewport floating-origin invariant', () => {
+  // happy-dom has no canvas 2D implementation (getContext('2d') returns null),
+  // but the point-sprite path (distant/unresolved bodies) needs one to build
+  // its gradient texture. Stub just enough of the 2D API for that to run.
+  let getContextSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    getContextSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((type: string) => {
+      if (type !== '2d') return null;
+      return {
+        createRadialGradient: () => ({ addColorStop: () => {} }),
+        fillRect: () => {},
+        fillStyle: '',
+      } as unknown as CanvasRenderingContext2D;
+    });
+  });
+  afterEach(() => {
+    getContextSpy.mockRestore();
+  });
+
+  // createScene's own WebGL-unavailable warning (happy-dom has no WebGL) also
+  // goes through console.warn, so assertions below match on this invariant's
+  // specific message rather than asserting on total call count.
+  const originWarningCalls = (warnSpy: ReturnType<typeof vi.spyOn>) =>
+    warnSpy.mock.calls.filter((call: unknown[]) => typeof call[0] === 'string' && call[0].includes('camera.position moved off the origin'));
+
+  it('updateFrame succeeds without the origin-invariant warning while camera.position stays at the origin', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const viewport = createTelescopeViewport(document.createElement('canvas'), makeEphemeris(), []);
+    expect(() =>
+      viewport.updateFrame({ time: 1000, shipPosition: { x: 1.4e11, y: 0, z: 0 }, shipForward: { x: 1, y: 0, z: 0 } }),
+    ).not.toThrow();
+    expect(originWarningCalls(warnSpy)).toHaveLength(0);
+    warnSpy.mockRestore();
+  });
+
+  it('warns once (without throwing or halting rendering) if something moves camera.position off the origin', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const viewport = createTelescopeViewport(document.createElement('canvas'), makeEphemeris(), []);
+    viewport.camera.position.set(1, 0, 0);
+    const frame = { time: 1000, shipPosition: { x: 1.4e11, y: 0, z: 0 }, shipForward: { x: 1, y: 0, z: 0 } };
+    expect(() => viewport.updateFrame(frame)).not.toThrow();
+    expect(originWarningCalls(warnSpy)).toHaveLength(1);
+    // Subsequent frames don't re-warn every tick (would spam the console at 60fps).
+    viewport.updateFrame(frame);
+    expect(originWarningCalls(warnSpy)).toHaveLength(1);
+    warnSpy.mockRestore();
   });
 });
