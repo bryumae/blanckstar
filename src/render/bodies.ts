@@ -102,7 +102,11 @@ export function computeBodyPlacement(
       z: shipPosition.z - bodyPosAtEmit.z,
     };
     const phase = phaseAngle(sunDirFromBody, shipDirFromBody);
-    brightness = reflectedBrightness(apparent.distance, REFERENCE_DISTANCE, phase);
+    // Body's own distance from the Sun at emission time — how much sunlight it
+    // receives (1/r² falloff). |sunDirFromBody| is exactly that Sun-to-body
+    // separation, so reuse it rather than recomputing.
+    const solarDistance = Math.hypot(sunDirFromBody.x, sunDirFromBody.y, sunDirFromBody.z);
+    brightness = reflectedBrightness(apparent.distance, solarDistance, REFERENCE_DISTANCE, phase);
   }
 
   return { direction: apparent.direction, distance: apparent.distance, angularSizeRad, brightness, resolvable };

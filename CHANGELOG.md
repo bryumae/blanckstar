@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+- Render/telescope geometry & photometry fixes (part of #19). Telescope: the
+  outside-view FOV readout showed a hardcoded `72.0°` while the camera and pick
+  tolerance use the real `OUTSIDE_FOV_DEG = 60` — now shows 60.0°. Starfield:
+  the per-star `size` attribute was dead (`THREE.PointsMaterial` renders every
+  point at the fixed uniform size), so brighter stars now render larger via a
+  compiled-shader patch that reads a per-vertex `aSize` attribute. Initial aim:
+  the outside view defaulted to `(0,0,-1)` = the south celestial pole (dec −90),
+  while bodies lie near the ecliptic (X/Y) plane; `yawPitchToLookVector` is now a
+  Z-up spherical convention (yaw about +Z, pitch toward the pole) so the default
+  aim is dec 0 in the ecliptic plane, and the camera up-vector is set to +Z to
+  match the world frame. Photometry: reflected-planet brightness now scales with
+  each body's own distance from the Sun (1/r_sun² incident sunlight) instead of a
+  fixed 1-AU normalization that modelled every body as Earth-lit and made the
+  outer planets far too bright (§7.1). Sim: a scheduled burn that interrupts an
+  active warp now zeroes `warp` and re-emits state, matching the SOI/win/lose
+  interrupt paths (§6) — previously the shell showed an active warp while time
+  was frozen until the user re-selected a factor.
+
 - Code-review fixes (PR #14, 10 findings). Sandbox/sim protocol correlation:
   `wait()` no longer hangs when issued after the game is over or to a past
   target — the sim emits a completed `skipProgress` on a no-op skip and the

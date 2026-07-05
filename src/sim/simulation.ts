@@ -269,6 +269,13 @@ export class Simulation {
         throttle: active.throttle,
         scheduledId: due.id,
       });
+      // A scheduled burn auto-interrupts warp/skip (§6), so zero the warp and
+      // re-emit state — mirroring the SOI/win/lose interrupt paths in
+      // checkVerdict(). Without this the driver stops ticking but leaves
+      // `warp` non-zero, so the shell shows an active warp while time is frozen
+      // until the user re-selects a factor.
+      this.warp = 0;
+      this.emitState();
       return { interrupt: 'scheduled-burn', over: false };
     }
 

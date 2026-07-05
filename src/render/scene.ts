@@ -31,14 +31,20 @@ export function clampPitch(pitch: number): number {
   return Math.min(MAX_PITCH, Math.max(-MAX_PITCH, pitch));
 }
 
-// Convert yaw/pitch (radians) to a forward-look unit vector in camera-local
-// space (right-handed, -Z forward convention matches THREE's default camera).
+// Convert yaw/pitch (radians) to a forward-look unit vector in the *world*
+// inertial frame — the same frame the starfield (raDecToUnit) and bodies
+// (apparentDirection) are placed in, where +Z is the celestial/ecliptic pole
+// and the ecliptic lies in the X/Y plane. Yaw is the azimuth about +Z; pitch is
+// the elevation toward the pole. At yaw=0, pitch=0 the look vector is (1,0,0) —
+// dec 0, in the ecliptic plane where the bodies lie — so the outside view is
+// aimed at the plane on load rather than at the south pole (the old -Z-forward,
+// +Y-up convention pointed at dec -90 while everything else is Z-up).
 export function yawPitchToLookVector(yaw: number, pitch: number): THREE.Vector3 {
   const cosPitch = Math.cos(pitch);
   return new THREE.Vector3(
+    Math.cos(yaw) * cosPitch,
     Math.sin(yaw) * cosPitch,
     Math.sin(pitch),
-    -Math.cos(yaw) * cosPitch,
   ).normalize();
 }
 
@@ -56,6 +62,9 @@ export interface Scene {
 export function createScene(canvas: HTMLCanvasElement): Scene {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1e12);
+  // World is Z-up (celestial/ecliptic pole = +Z; see yawPitchToLookVector), so
+  // the camera's up must be +Z too — otherwise lookAt would roll the horizon.
+  camera.up.set(0, 0, 1);
   let renderer: THREE.WebGLRenderer | null = null;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });

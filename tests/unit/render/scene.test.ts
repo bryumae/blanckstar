@@ -23,6 +23,13 @@ describe('createScene WebGL resilience', () => {
     expect(scene!.camera).toBeTruthy();
     expect(scene!.scene).toBeTruthy();
   });
+
+  it('sets the camera up-vector to +Z to match the Z-up world frame', () => {
+    const scene = createScene(document.createElement('canvas'));
+    expect(scene.camera.up.x).toBeCloseTo(0, 9);
+    expect(scene.camera.up.y).toBeCloseTo(0, 9);
+    expect(scene.camera.up.z).toBeCloseTo(1, 9);
+  });
 });
 
 describe('clampFov', () => {
@@ -64,15 +71,24 @@ describe('yawPitchToLookVector', () => {
     }
   });
 
-  it('points along -Z at yaw=0, pitch=0', () => {
+  it('aims into the ecliptic plane (+X, dec 0) at yaw=0, pitch=0', () => {
+    // The world is Z-up (pole = +Z); bodies lie near the X/Y plane, so the
+    // default aim must have z ~ 0 rather than pointing at the -Z south pole.
     const v = yawPitchToLookVector(0, 0);
-    expect(v.x).toBeCloseTo(0, 9);
+    expect(v.x).toBeCloseTo(1, 9);
     expect(v.y).toBeCloseTo(0, 9);
-    expect(v.z).toBeCloseTo(-1, 9);
+    expect(v.z).toBeCloseTo(0, 9);
   });
 
-  it('tilts toward +Y as pitch increases', () => {
+  it('tilts toward the +Z pole as pitch increases', () => {
     const v = yawPitchToLookVector(0, 0.5);
-    expect(v.y).toBeCloseTo(Math.sin(0.5), 9);
+    expect(v.z).toBeCloseTo(Math.sin(0.5), 9);
+  });
+
+  it('sweeps azimuth in the X/Y (ecliptic) plane as yaw increases', () => {
+    const v = yawPitchToLookVector(Math.PI / 2, 0);
+    expect(v.x).toBeCloseTo(0, 9);
+    expect(v.y).toBeCloseTo(1, 9);
+    expect(v.z).toBeCloseTo(0, 9);
   });
 });

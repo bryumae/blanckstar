@@ -3,7 +3,7 @@
 // 5) driving a single Three.js viewport (src/render/scene.ts).
 import type { EphemerisData } from '../../core/ephemerisTypes';
 import type { StarCatalogEntry } from '../../net/loadEphemeris';
-import { createTelescopeViewport, type TelescopeViewport, type ViewMode } from '../../render/scene';
+import { createTelescopeViewport, OUTSIDE_FOV_DEG, type TelescopeViewport, type ViewMode } from '../../render/scene';
 import {
   candidateToIdentified,
   pickNearest,
@@ -274,7 +274,10 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     reticle.style.display = ui.mode === 'telescope' ? 'block' : 'none';
     canvas.style.cursor = 'crosshair';
 
-    const fovLabel = ui.mode === 'outside' ? '72.0°' : `${ui.fovDeg.toFixed(1)}°`;
+    // Outside mode uses the fixed camera FOV (OUTSIDE_FOV_DEG); telescope mode
+    // shows the live zoom FOV. Both must match the real optics — the pick
+    // tolerance is calibrated against the same figure (getFovDeg()).
+    const fovLabel = ui.mode === 'outside' ? `${OUTSIDE_FOV_DEG.toFixed(1)}°` : `${ui.fovDeg.toFixed(1)}°`;
     fovValueEl.textContent = fovLabel;
     zoomValue.textContent = fovLabel;
     if (Number(zoomSlider.value) !== ui.fovDeg) {
