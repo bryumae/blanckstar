@@ -133,18 +133,32 @@ describe('createTelescopeViewport floating-origin invariant', () => {
     getContextSpy.mockRestore();
   });
 
-  it('updateFrame succeeds while camera.position stays at the origin', () => {
+  // createScene's own WebGL-unavailable warning (happy-dom has no WebGL) also
+  // goes through console.warn, so assertions below match on this invariant's
+  // specific message rather than asserting on total call count.
+  const originWarningCalls = (warnSpy: ReturnType<typeof vi.spyOn>) =>
+    warnSpy.mock.calls.filter((call: unknown[]) => typeof call[0] === 'string' && call[0].includes('camera.position moved off the origin'));
+
+  it('updateFrame succeeds without the origin-invariant warning while camera.position stays at the origin', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const viewport = createTelescopeViewport(document.createElement('canvas'), makeEphemeris(), []);
     expect(() =>
       viewport.updateFrame({ time: 1000, shipPosition: { x: 1.4e11, y: 0, z: 0 }, shipForward: { x: 1, y: 0, z: 0 } }),
     ).not.toThrow();
+    expect(originWarningCalls(warnSpy)).toHaveLength(0);
+    warnSpy.mockRestore();
   });
 
-  it('throws if something ever moves camera.position off the origin', () => {
+  it('warns once (without throwing or halting rendering) if something moves camera.position off the origin', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const viewport = createTelescopeViewport(document.createElement('canvas'), makeEphemeris(), []);
     viewport.camera.position.set(1, 0, 0);
-    expect(() =>
-      viewport.updateFrame({ time: 1000, shipPosition: { x: 1.4e11, y: 0, z: 0 }, shipForward: { x: 1, y: 0, z: 0 } }),
-    ).toThrow(/camera\.position must stay at the origin/);
+    const frame = { time: 1000, shipPosition: { x: 1.4e11, y: 0, z: 0 }, shipForward: { x: 1, y: 0, z: 0 } };
+    expect(() => viewport.updateFrame(frame)).not.toThrow();
+    expect(originWarningCalls(warnSpy)).toHaveLength(1);
+    // Subsequent frames don't re-warn every tick (would spam the console at 60fps).
+    viewport.updateFrame(frame);
+    expect(originWarningCalls(warnSpy)).toHaveLength(1);
+    warnSpy.mockRestore();
   });
 });

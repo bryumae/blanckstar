@@ -111,6 +111,7 @@ export function createTelescopeViewport(
   let fovDeg = OUTSIDE_FOV_DEG;
   let yaw = 0;
   let pitch = 0;
+  let originInvariantWarned = false;
 
   function applyLook(): void {
     const look = yawPitchToLookVector(yaw, pitch);
@@ -154,10 +155,17 @@ export function createTelescopeViewport(
       // that's how this scene implements the spacecraft-centered floating
       // origin (mvp0_spec.md §4.6) without ever feeding heliocentric meters
       // into a THREE transform. If camera.position were ever driven from the
-      // ship's position too, the ship offset would be applied twice. Assert
-      // loudly rather than let that regression silently misplace everything.
-      if (camera.position.x !== 0 || camera.position.y !== 0 || camera.position.z !== 0) {
-        throw new Error('Scene: camera.position must stay at the origin — see floating-origin invariant comment above.');
+      // ship's position too, the ship offset would be applied twice. Warn
+      // loudly (once) rather than throw: this runs every animation frame via
+      // src/main.ts's requestAnimationFrame loop, which reschedules itself
+      // only after this call returns, so throwing here would permanently
+      // stop rendering — worse than the regression it's guarding against,
+      // and inconsistent with this project's graceful-degradation convention
+      // for render failures (see createScene's WebGL try/catch above).
+      if (!originInvariantWarned && (camera.position.x !== 0 || camera.position.y !== 0 || camera.position.z !== 0)) {
+        originInvariantWarned = true;
+        // eslint-disable-next-line no-console
+        console.warn('Scene: camera.position moved off the origin — see floating-origin invariant comment in updateFrame.');
       }
       starfield.update(camera.position);
       for (const id of VISIBLE_BODIES) {

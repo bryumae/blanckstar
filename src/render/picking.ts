@@ -4,7 +4,7 @@
 // logic (independently testable) from the THREE.js raycast plumbing that
 // feeds it.
 import * as THREE from 'three';
-import type { Vector3 } from '../core/vector3';
+import { dot, normalize, norm, type Vector3 } from '../core/vector3';
 import type { BodyId, IdentifiedObject } from './types';
 
 export interface PickCandidate {
@@ -15,37 +15,30 @@ export interface PickCandidate {
   readonly direction: Vector3; // unit vector from camera/ship
 }
 
-// A dot product between two unit vectors is cos(angle); callers rely on that
-// to compare against minDot without ever calling acos. Normalize defensively
-// here rather than trusting every caller (starfield/body direction sources)
-// to hand back exactly unit-length vectors — a non-unit vector would silently
-// bias the comparison toward whichever candidate happens to be longer.
-function normalize(v: Vector3): Vector3 {
-  const len = Math.hypot(v.x, v.y, v.z);
-  if (len === 0) return v;
-  return { x: v.x / len, y: v.y / len, z: v.z / len };
-}
-
 // Pure nearest-angular-match: given a click ray direction (unit vector) and a
 // list of candidate directions, return the candidate with the smallest
 // angle to the ray, provided it's within maxAngleRad — otherwise null (click
 // missed everything). Angle compared via dot product (monotonic, avoids
-// per-candidate acos calls).
+// per-candidate acos calls). Candidate directions are trusted to already be
+// unit-length — that's the PickCandidate contract (see field doc above),
+// upheld by its only producers (apparentDirection, raDecToUnit) — so this
+// hot loop (run over the full star catalog on every click) doesn't re-derive
+// it per candidate. The ray is normalized once since it's the one input this
+// module doesn't control the construction of.
 export function pickNearest(
   rayDirection: Vector3,
   candidates: readonly PickCandidate[],
   maxAngleRad: number,
 ): PickCandidate | null {
   if (candidates.length === 0) return null;
-  const ray = normalize(rayDirection);
+  const ray = norm(rayDirection) === 0 ? rayDirection : normalize(rayDirection);
   const minDot = Math.cos(maxAngleRad);
   let best: PickCandidate | null = null;
   let bestDot = -Infinity;
   for (const c of candidates) {
-    const dir = normalize(c.direction);
-    const dot = ray.x * dir.x + ray.y * dir.y + ray.z * dir.z;
-    if (dot > bestDot) {
-      bestDot = dot;
+    const d = dot(ray, c.direction);
+    if (d > bestDot) {
+      bestDot = d;
       best = c;
     }
   }
