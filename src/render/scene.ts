@@ -147,6 +147,18 @@ export function createTelescopeViewport(
       applyLook();
     },
     updateFrame(state: RenderFrameState): void {
+      // Invariant: the render camera must stay pinned at the world origin.
+      // Bodies (bodies.ts) and stars (starfield.ts) are already placed by
+      // *direction* vectors computed relative to the ship (apparentDirection
+      // subtracts shipPosition internally) rather than by absolute position —
+      // that's how this scene implements the spacecraft-centered floating
+      // origin (mvp0_spec.md §4.6) without ever feeding heliocentric meters
+      // into a THREE transform. If camera.position were ever driven from the
+      // ship's position too, the ship offset would be applied twice. Assert
+      // loudly rather than let that regression silently misplace everything.
+      if (camera.position.x !== 0 || camera.position.y !== 0 || camera.position.z !== 0) {
+        throw new Error('Scene: camera.position must stay at the origin — see floating-origin invariant comment above.');
+      }
       starfield.update(camera.position);
       for (const id of VISIBLE_BODIES) {
         const placement = computeBodyPlacement(ephemeris, id, state.shipPosition, state.time);

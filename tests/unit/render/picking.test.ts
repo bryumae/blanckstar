@@ -30,6 +30,15 @@ describe('pickNearest', () => {
     const miss = pickNearest(ray, CANDIDATES, 0.05 - 1e-6);
     expect(miss).toBeNull();
   });
+
+  it('is unaffected by non-unit-length ray or candidate directions', () => {
+    const nonUnitCandidates: PickCandidate[] = [
+      { kind: 'body', id: 'earth', name: 'Earth', bodyId: 'earth', direction: { x: 5, y: 0, z: 0 } },
+      { kind: 'body', id: 'mars', name: 'Mars', bodyId: 'mars', direction: { x: 0, y: 0.001, z: 0 } },
+    ];
+    const hit = pickNearest({ x: 3, y: 0.03, z: 0 }, nonUnitCandidates, 0.1);
+    expect(hit?.id).toBe('earth');
+  });
 });
 
 describe('candidateToIdentified', () => {

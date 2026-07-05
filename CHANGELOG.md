@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- Closes the last item tracked by #19: the latent floating-origin/picking
+  concern. `src/render/picking.ts`'s `pickNearest` now defensively normalizes
+  the ray and candidate directions before the dot-product comparison, instead
+  of trusting every caller to hand back exactly unit-length vectors.
+  `src/render/scene.ts`'s `updateFrame` now asserts `camera.position` stays
+  pinned at the world origin — bodies and stars are already placed by
+  direction vectors computed relative to the ship, so moving the camera too
+  would double-apply the ship offset; the assertion turns that regression into
+  a loud failure instead of a silently-misplaced scene. Removed
+  `src/core/floatingOrigin.ts`'s `renderPosition`, a Phase-1 helper matching
+  the literal `(body_pos - ship_pos) * scale` formula from mvp0_spec.md §4.6
+  that had zero call sites — the actual render approach (direction + fixed
+  render distance, `bodies.ts`) superseded it, and its presence was exactly
+  the kind of unused seam that could tempt a future change into wiring
+  `camera.position` from ship position directly.
+
 - Render/telescope geometry & photometry fixes (part of #19). Telescope: the
   outside-view FOV readout showed a hardcoded `72.0°` while the camera and pick
   tolerance use the real `OUTSIDE_FOV_DEG = 60` — now shows 60.0°. Starfield:

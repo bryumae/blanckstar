@@ -15,6 +15,17 @@ export interface PickCandidate {
   readonly direction: Vector3; // unit vector from camera/ship
 }
 
+// A dot product between two unit vectors is cos(angle); callers rely on that
+// to compare against minDot without ever calling acos. Normalize defensively
+// here rather than trusting every caller (starfield/body direction sources)
+// to hand back exactly unit-length vectors — a non-unit vector would silently
+// bias the comparison toward whichever candidate happens to be longer.
+function normalize(v: Vector3): Vector3 {
+  const len = Math.hypot(v.x, v.y, v.z);
+  if (len === 0) return v;
+  return { x: v.x / len, y: v.y / len, z: v.z / len };
+}
+
 // Pure nearest-angular-match: given a click ray direction (unit vector) and a
 // list of candidate directions, return the candidate with the smallest
 // angle to the ray, provided it's within maxAngleRad — otherwise null (click
@@ -26,11 +37,13 @@ export function pickNearest(
   maxAngleRad: number,
 ): PickCandidate | null {
   if (candidates.length === 0) return null;
+  const ray = normalize(rayDirection);
   const minDot = Math.cos(maxAngleRad);
   let best: PickCandidate | null = null;
   let bestDot = -Infinity;
   for (const c of candidates) {
-    const dot = rayDirection.x * c.direction.x + rayDirection.y * c.direction.y + rayDirection.z * c.direction.z;
+    const dir = normalize(c.direction);
+    const dot = ray.x * dir.x + ray.y * dir.y + ray.z * dir.z;
     if (dot > bestDot) {
       bestDot = dot;
       best = c;
