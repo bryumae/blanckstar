@@ -55,6 +55,10 @@ export interface DebugOverlayHandle {
 const TRACE_CAPACITY = 2000;
 
 export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): DebugOverlayHandle {
+  // window-level listeners outlive this mount unless torn down explicitly;
+  // one signal lets destroy() remove all of them in one call (#16).
+  const windowListeners = new AbortController();
+
   const watermark = document.createElement('div');
   watermark.className = 'debug-watermark';
   watermark.textContent = 'DEBUG';
@@ -276,20 +280,28 @@ export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): De
     lastX = e.clientX;
     lastY = e.clientY;
   });
-  window.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const dxPx = e.clientX - lastX;
-    const dyPx = e.clientY - lastY;
-    const worldA = canvasToWorld({ x: 0, y: 0 }, mapView, { width: canvas.width, height: canvas.height });
-    const worldB = canvasToWorld({ x: dxPx, y: -dyPx }, mapView, { width: canvas.width, height: canvas.height });
-    mapView = panView(mapView, -(worldB.x - worldA.x), -(worldB.y - worldA.y));
-    lastX = e.clientX;
-    lastY = e.clientY;
-    redrawMap();
-  });
-  window.addEventListener('mouseup', () => {
-    dragging = false;
-  });
+  window.addEventListener(
+    'mousemove',
+    (e) => {
+      if (!dragging) return;
+      const dxPx = e.clientX - lastX;
+      const dyPx = e.clientY - lastY;
+      const worldA = canvasToWorld({ x: 0, y: 0 }, mapView, { width: canvas.width, height: canvas.height });
+      const worldB = canvasToWorld({ x: dxPx, y: -dyPx }, mapView, { width: canvas.width, height: canvas.height });
+      mapView = panView(mapView, -(worldB.x - worldA.x), -(worldB.y - worldA.y));
+      lastX = e.clientX;
+      lastY = e.clientY;
+      redrawMap();
+    },
+    { signal: windowListeners.signal },
+  );
+  window.addEventListener(
+    'mouseup',
+    () => {
+      dragging = false;
+    },
+    { signal: windowListeners.signal },
+  );
 
   // Keep worldToCanvas import used for consumers that only need the pure
   // transform for hit-testing (e.g. a future click-to-select body); referenced
@@ -316,6 +328,7 @@ export function mountDebugOverlay(root: HTMLElement, deps: DebugOverlayDeps): De
 
   return {
     destroy(): void {
+      windowListeners.abort();
       unsubscribe();
       resizeObserver.disconnect();
       root.removeChild(watermark);

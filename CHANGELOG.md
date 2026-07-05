@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Fixes #16: `mountTelescopeScreen`'s and `mountDebugOverlay`'s `destroy()`
+  now abort the `window`-level `mousemove`/`mouseup` (and, for the telescope
+  screen, filter-menu-close `click`) listeners added at mount, via a shared
+  `AbortController` passed as each listener's `signal`. Neither `destroy()`
+  is called from `main.ts` today so this was latent, but it would have
+  accumulated stale-closure listeners on any future remount flow.
+
 - Closes the last item tracked by #19: the latent floating-origin/picking
   concern. `src/render/picking.ts`'s `pickNearest` now normalizes the ray
   direction (the one input this module doesn't control the construction of)
