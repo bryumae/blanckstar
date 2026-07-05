@@ -106,7 +106,7 @@ the sim.
 sim state, so they execute **in the worker** against `src/core` (the worker
 bundle may import `src/core`; the player cannot). `predict()` (`predict.ts`)
 propagates a **player-entered** state with the same `rk4`/`gravity`/tiered-
-timestep/Hermite code path the sim uses (`src/sim/physics`), against the
+timestep/Hermite code path the sim uses (`src/core/advance`), against the
 ephemeris handed to the worker at run start. That shared code — not a copy — is
 the §7.7/§8.2 "same engine" guarantee; a unit test asserts predict() rows match a
 direct core propagation.
@@ -189,3 +189,16 @@ Fixes to the correlation layer and the neutralization backstop found in review:
   `stepToBoundary`, so predicted trajectories integrate the sim's own grid
   (burn boundaries + target) and match it regardless of `stepOut`; sample rows
   are emitted at the first step endpoint at/after each output tick.
+
+## Addendum (issue #17) — shared advance/burn logic moved to `src/core`
+
+The "same engine" guarantee above depended on `predict()` importing
+`gravitatingBodiesAt`/`advance` from `src/sim/physics`, while the UI predictor
+tab (`src/ui/sequence/tabs/predictorEngine.ts`) could not do the same across
+the phase boundary and instead copied the logic — the two copies drifted and
+caused the predictor-parity fixes noted above. That wiring, plus the
+`thrustAt`/`burnBoundaries` burn-scheduling helpers (previously duplicated as
+`PredictBurn`/`PredictorBurn`), now lives in `src/core/advance.ts` and
+`src/core/burn.ts`: pure, importable by the sim, the sandbox, and the UI
+alike. `predict()` and the predictor tab both import from `src/core` now;
+`src/sim/physics.ts` no longer exists.

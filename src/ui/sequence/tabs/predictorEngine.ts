@@ -1,28 +1,21 @@
 // Trajectory predictor propagation (mvp0_spec.md §7.7, §8.2 predict()). Same
 // engine as the live simulation — RK4 + Sun/Earth/Moon gravity + tiered
 // timestep + Hermite ephemeris — applied to a PLAYER-ENTERED state, never the
-// hidden ship truth. Per the phase-8 task boundary this module reimplements
-// the small accel-composition closure locally from src/core pieces (mirroring
-// src/sim/physics.ts's gravity + throttle*maxAccel*direction during burn
-// windows) instead of importing src/sim, so this tab stays inside its
-// boundary (src/ui/sequence/tabs/ + tests only).
+// hidden ship truth. The acceleration-composition + advance step and the
+// burn/thrust helpers are shared pure logic from src/core (importable by sim,
+// sandbox, and UI alike per the phase boundary), not a local copy.
 import type { Vector3 } from '../../../core/vector3';
-import { normalize, mul, sub, norm } from '../../../core/vector3';
-import type { State, Acceleration } from '../../../core/rk4';
-import { rk4Step } from '../../../core/rk4';
+import { sub, norm } from '../../../core/vector3';
+import type { State } from '../../../core/rk4';
 import type { EphemerisData } from '../../../core/ephemerisTypes';
 import { positionAt, velocityAt } from '../../../core/ephemerisInterp';
-import { gravityAcceleration } from '../../../core/gravity';
-import type { GravitatingBodies } from '../../../core/gravity';
+import { gravitatingBodiesAt, advance } from '../../../core/advance';
+import type { Burn } from '../../../core/burn';
+import { thrustAt, burnBoundaries } from '../../../core/burn';
 import { selectTimestep, stepToBoundary } from '../../../core/timestep';
 import { MAX_ACCELERATION } from '../../../core/constants';
 
-export interface PredictorBurn {
-  readonly startTime: number; // unix seconds
-  readonly direction: Vector3;
-  readonly throttle: number; // [0, 1]
-  readonly duration: number; // seconds
-}
+export type PredictorBurn = Burn;
 
 export interface PredictorInput {
   readonly position: Vector3;
@@ -48,45 +41,6 @@ export interface ClosestApproach {
 export interface PredictorResult {
   readonly samples: readonly PredictorSample[];
   readonly closestApproach: ClosestApproach;
-}
-
-function gravitatingBodiesAt(ephemeris: EphemerisData, t: number): GravitatingBodies {
-  return {
-    sun: positionAt(ephemeris, 'sun', t),
-    earth: positionAt(ephemeris, 'earth', t),
-    moon: positionAt(ephemeris, 'moon', t),
-  };
-}
-
-function makeAcceleration(ephemeris: EphemerisData, thrust: Vector3): Acceleration {
-  return (state: State, t: number): Vector3 => {
-    const g = gravityAcceleration(state.position, gravitatingBodiesAt(ephemeris, t));
-    return { x: g.x + thrust.x, y: g.y + thrust.y, z: g.z + thrust.z };
-  };
-}
-
-function advance(ephemeris: EphemerisData, state: State, t: number, dt: number, thrust: Vector3): State {
-  return rk4Step(state, t, dt, makeAcceleration(ephemeris, thrust));
-}
-
-// Thrust acceleration vector for a burn active at time t, or zero. At most one
-// burn is active at once; the first covering burn wins (mirrors the sim's
-// scheduled-burn contract that windows do not overlap).
-function thrustAt(burns: readonly PredictorBurn[], t: number, maxAccel: number): Vector3 {
-  for (const b of burns) {
-    if (t >= b.startTime && t < b.startTime + b.duration) {
-      return mul(normalize(b.direction), b.throttle * maxAccel);
-    }
-  }
-  return { x: 0, y: 0, z: 0 };
-}
-
-function burnBoundaries(burns: readonly PredictorBurn[]): number[] {
-  const out: number[] = [];
-  for (const b of burns) {
-    out.push(b.startTime, b.startTime + b.duration);
-  }
-  return out;
 }
 
 function sampleAt(ephemeris: EphemerisData, state: State, t: number): PredictorSample {

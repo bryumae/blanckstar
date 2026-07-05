@@ -1,9 +1,9 @@
 // In-worker predict() (src/sandbox/predict.ts, mvp0_spec.md §7.7, §8.2). The
 // contract: predict() uses the EXACT same engine as the sim, so its rows must
-// match a direct src/sim/physics propagation of the same entered state.
+// match a direct src/core/advance propagation of the same entered state.
 import { describe, it, expect } from 'vitest';
 import { predict } from '../../src/sandbox/predict';
-import { advance, gravitatingBodiesAt } from '../../src/sim/physics';
+import { advance, gravitatingBodiesAt } from '../../src/core/advance';
 import { selectTimestep, stepToBoundary } from '../../src/core/timestep';
 import { normalize, mul } from '../../src/core/vector3';
 import type { State } from '../../src/core/rk4';

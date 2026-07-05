@@ -18,7 +18,7 @@ import type { EmitFn } from './messages';
 import { BODY_IDS } from './types';
 import type { InterruptReason, ScenarioSeed, ShipState, WarpFactor } from './types';
 import { BurnManager, deltaVForSubstep } from './burns';
-import { gravitatingBodiesAt, advance } from './physics';
+import { gravitatingBodiesAt, advance } from '../core/advance';
 import {
   MeasurementLog,
   radioLockEarth,

@@ -14,6 +14,7 @@ import type { Vector3 } from '../../core/vector3';
 import { sub, norm } from '../../core/vector3';
 import { rk4Step, type State } from '../../core/rk4';
 import { gravityAcceleration, type GravitatingBodies } from '../../core/gravity';
+import { gravitatingBodiesAt } from '../../core/advance';
 import { selectTimestep } from '../../core/timestep';
 import type { EphemerisData } from '../../core/ephemerisTypes';
 import { positionAt, velocityAt } from '../../core/ephemerisInterp';
@@ -44,18 +45,13 @@ function ephemerisCoverage(ephemeris: EphemerisData): { start: number; end: numb
 // step's own boundary check due to float rounding; clamp so intermediate
 // stages never throw for being a few ULPs over the coverage edge.
 function bodiesAt(ephemeris: EphemerisData, t: number, coverage: { start: number; end: number }): GravitatingBodies {
-  const clamped = clampToCoverage(t, coverage.start, coverage.end);
-  return {
-    sun: positionAt(ephemeris, 'sun', clamped),
-    earth: positionAt(ephemeris, 'earth', clamped),
-    moon: positionAt(ephemeris, 'moon', clamped),
-  };
+  return gravitatingBodiesAt(ephemeris, clampToCoverage(t, coverage.start, coverage.end));
 }
 
 // Propagate `state` forward by exactly one tiered-timestep RK4 step, returning
-// the new state and the dt actually used (mirrors sim/physics.ts's per-step
-// selection, duplicated here deliberately: the Data screen may not import from
-// src/sim per the phase boundary, and this is a small, pure, testable rule).
+// the new state and the dt actually used (the per-step selection itself is
+// this module's own concern — no thrust/burn support is needed here, unlike
+// the shared src/core/advance.ts wiring the sim and predictors use).
 function stepOnce(
   state: State,
   t: number,
