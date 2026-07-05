@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createStarfield, patchStarSizeShader, STAR_FIELD_RADIUS } from '../../../src/render/starfield';
 import type { StarCatalogEntry } from '../../../src/net/loadEphemeris';
@@ -45,6 +45,16 @@ describe('createStarfield', () => {
     const shader = { vertexShader: 'gl_PointSize = size;' };
     material.onBeforeCompile(shader as never, undefined as never);
     expect(shader.vertexShader).toContain('gl_PointSize = aSize;');
+  });
+
+  it('warns (not throws) if the shader injection point is gone (THREE chunk renamed)', () => {
+    const field = createStarfield(CATALOG);
+    const material = field.points.material as THREE.PointsMaterial;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const shader = { vertexShader: 'void main() {}' }; // no gl_PointSize = size marker
+    expect(() => material.onBeforeCompile(shader as never, undefined as never)).not.toThrow();
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 
   it('recenters the point cloud on the camera each update (no parallax)', () => {

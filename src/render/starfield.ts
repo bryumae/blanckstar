@@ -70,8 +70,15 @@ export function createStarfield(catalog: readonly StarCatalogEntry[]): Starfield
     depthWrite: false,
   });
   // Wire the per-vertex aSize attribute into gl_PointSize (see patchStarSizeShader).
+  // Warn loudly if the injection point is gone (a THREE upgrade renaming the
+  // PointsMaterial vertex chunk) — otherwise stars silently revert to uniform
+  // size with no signal, since the unit tests exercise a synthetic shader string
+  // rather than THREE's real compiled source.
   material.onBeforeCompile = (shader) => {
-    patchStarSizeShader(shader);
+    if (!patchStarSizeShader(shader)) {
+      // eslint-disable-next-line no-console
+      console.warn('Starfield: per-star size shader patch failed (THREE PointsMaterial chunk changed?); stars render at uniform size.');
+    }
   };
 
   const points = new THREE.Points(geometry, material);
