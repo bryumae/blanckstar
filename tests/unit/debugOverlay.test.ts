@@ -168,6 +168,24 @@ describe('mountDebugOverlay (§10)', () => {
     expect(root.querySelector('.debug-watermark')).toBeNull();
   });
 
+  it('destroy() removes the window-level mousemove/mouseup drag listeners (#16)', () => {
+    const root = document.createElement('div');
+    const { deps } = makeHarness();
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const handle = mountDebugOverlay(root, deps);
+    const windowCalls = addSpy.mock.calls.filter(
+      ([type]) => (type as string) === 'mousemove' || (type as string) === 'mouseup',
+    );
+    expect(windowCalls.length).toBe(2);
+    handle.destroy();
+    // AbortController-backed listeners are torn down via the signal, not an
+    // explicit removeEventListener call, so assert on the signal instead.
+    for (const [, , options] of windowCalls) {
+      expect((options as AddEventListenerOptions).signal?.aborted).toBe(true);
+    }
+    addSpy.mockRestore();
+  });
+
   it('map zoom preset buttons switch the active view without throwing', () => {
     const root = document.createElement('div');
     const { deps, emit } = makeHarness();

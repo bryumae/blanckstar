@@ -54,6 +54,10 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
   root.textContent = '';
   root.classList.add('telescope-screen');
 
+  // window-level listeners outlive this mount unless torn down explicitly;
+  // one signal lets destroy() remove all of them in one call (#16).
+  const windowListeners = new AbortController();
+
   const viewportEl = document.createElement('div');
   viewportEl.className = 'telescope-viewport';
 
@@ -178,7 +182,9 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
   });
   filterMenu.addEventListener('click', (e) => e.stopPropagation());
   filterWrap.append(filterBtn, filterMenu);
-  window.addEventListener('click', () => filterMenu.classList.remove('is-open'));
+  window.addEventListener('click', () => filterMenu.classList.remove('is-open'), {
+    signal: windowListeners.signal,
+  });
 
   idHeaderRow.append(idTitle, filterWrap);
   const idSubtitle = document.createElement('div');
@@ -411,15 +417,23 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
     lastX = e.clientX;
     lastY = e.clientY;
   });
-  window.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    viewport.onDragMove(e.clientX - lastX, e.clientY - lastY);
-    lastX = e.clientX;
-    lastY = e.clientY;
-  });
-  window.addEventListener('mouseup', () => {
-    dragging = false;
-  });
+  window.addEventListener(
+    'mousemove',
+    (e) => {
+      if (!dragging) return;
+      viewport.onDragMove(e.clientX - lastX, e.clientY - lastY);
+      lastX = e.clientX;
+      lastY = e.clientY;
+    },
+    { signal: windowListeners.signal },
+  );
+  window.addEventListener(
+    'mouseup',
+    () => {
+      dragging = false;
+    },
+    { signal: windowListeners.signal },
+  );
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -517,6 +531,7 @@ export function mountTelescopeScreen(root: HTMLElement, deps: TelescopeScreenDep
       render();
     },
     destroy(): void {
+      windowListeners.abort();
       resizeObserver.disconnect();
       viewport.dispose();
     },
