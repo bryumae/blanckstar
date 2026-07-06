@@ -88,11 +88,15 @@ describe('SANDBOX_API_DOCS registry', () => {
     expect(asyncDocs.sort()).toEqual([...ASYNC_NAMES].sort());
   });
 
-  it('documents every constant as a sync variable with type and value', () => {
+  it('documents every constant as a variable carrying its bare numeric value', () => {
     for (const name of CONSTANT_NAMES) {
       const doc = SANDBOX_API_DOCS.find((d) => d.name === name);
       expect(doc?.kind).toBe('variable');
-      expect((doc as { value: string }).value).toMatch(/^number — \d/);
+      // Numbers carry no type prefix — only a future non-number type would.
+      // Round-trip through Number: pins the value to exactly what String()
+      // renders for a real number (rejects prefixes and garbage alike).
+      const value = (doc as { value: string }).value;
+      expect(String(Number(value))).toBe(value);
     }
     const variables = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable').map((d) => d.name);
     expect(variables.sort()).toEqual([...CONSTANT_NAMES].sort());
@@ -139,9 +143,9 @@ describe('filterDocs', () => {
 
 describe('sortDocs', () => {
   const sample: SandboxApiDoc[] = [
-    { kind: 'variable', name: 'beta', description: 'Zeta first.', source: 'builtin', value: 'number — 1' },
-    { kind: 'variable', name: 'Alpha', description: 'middle row.', source: 'builtin', value: 'number — 2' },
-    { kind: 'variable', name: 'gamma', description: 'apex row.', source: 'builtin', value: 'number — 3' },
+    { kind: 'variable', name: 'beta', description: 'Zeta first.', source: 'builtin', value: '1' },
+    { kind: 'variable', name: 'Alpha', description: 'middle row.', source: 'builtin', value: '2' },
+    { kind: 'variable', name: 'gamma', description: 'apex row.', source: 'builtin', value: '3' },
   ];
 
   it('sorts by name in both directions, case-insensitively', () => {
@@ -156,8 +160,8 @@ describe('sortDocs', () => {
 
   it('is stable and never mutates its input', () => {
     const tied: SandboxApiDoc[] = [
-      { kind: 'variable', name: 'same', description: 'first', source: 'builtin', value: 'number — 1' },
-      { kind: 'variable', name: 'same', description: 'second', source: 'builtin', value: 'number — 2' },
+      { kind: 'variable', name: 'same', description: 'first', source: 'builtin', value: '1' },
+      { kind: 'variable', name: 'same', description: 'second', source: 'builtin', value: '2' },
     ];
     const sorted = sortDocs(tied, 'name', 'asc');
     expect(sorted.map((d) => d.description)).toEqual(['first', 'second']);

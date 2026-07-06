@@ -2,6 +2,7 @@
 // Console's lower pane whenever a sheet's console output is closed. Plain
 // DOM/CSS, no framework (repo rule 5); all data comes from the central
 // registry in src/sandbox/apiDocs.ts.
+import { attachSplitterDrag } from './splitter';
 import {
   SANDBOX_API_DOCS,
   filterDocs,
@@ -10,13 +11,6 @@ import {
   type SandboxApiSortDirection,
   type SandboxApiSortKey,
 } from '../../sandbox/apiDocs';
-
-export interface ApiReferencePanel {
-  readonly el: HTMLElement;
-  // Toggle the "Show last output" affordance (shown when the sheet has
-  // output history) and wire its click handler.
-  setShowLastOutput(visible: boolean): void;
-}
 
 interface SortState {
   key: SandboxApiSortKey;
@@ -41,73 +35,62 @@ function sortSelect(onChange: (state: SortState) => void): HTMLSelectElement {
     select.appendChild(option);
   }
   select.addEventListener('change', () => {
-    const chosen = SORT_OPTIONS.find((o) => o.value === select.value) ?? SORT_OPTIONS[0]!;
-    onChange(chosen.state);
+    onChange(SORT_OPTIONS[select.selectedIndex]!.state);
   });
   return select;
 }
 
-export function createApiReferencePanel(onShowLastOutput: () => void): ApiReferencePanel {
+// Returns the panel's root element — the side-by-side drawers container
+// itself; the caller toggles it against the console output view.
+export function createApiReferencePanel(): HTMLElement {
   const el = document.createElement('div');
   el.className = 'script-api-reference';
-
-  // ---- toolbar: shared filter + Show last output ----
-  const toolbar = document.createElement('div');
-  toolbar.className = 'api-ref-toolbar';
-  const filterInput = document.createElement('input');
-  filterInput.className = 'api-ref-filter';
-  filterInput.type = 'search';
-  filterInput.placeholder = 'Filter API by name or description...';
-  filterInput.setAttribute('aria-label', 'Filter API by name or description');
-  const showOutputBtn = document.createElement('button');
-  showOutputBtn.className = 'api-ref-show-output';
-  showOutputBtn.type = 'button';
-  showOutputBtn.textContent = 'Show last output';
-  showOutputBtn.hidden = true;
-  showOutputBtn.addEventListener('click', onShowLastOutput);
-  toolbar.append(filterInput, showOutputBtn);
-
-  const drawers = document.createElement('div');
-  drawers.className = 'api-ref-drawers';
-  el.append(toolbar, drawers);
-
-  const variables = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable');
-  const functions = SANDBOX_API_DOCS.filter((d) => d.kind === 'function');
 
   interface Drawer {
     docs: readonly SandboxApiDoc[];
     sort: SortState;
     emptyText: string;
+    section: HTMLElement;
     body: HTMLElement;
+    filter: HTMLInputElement;
   }
 
-  function buildDrawer(title: string, docs: readonly SandboxApiDoc[], emptyText: string): Drawer {
+  // Each drawer header is its own filter input (the drawer's name doubles as
+  // the placeholder) plus a sort select — no separate toolbar row.
+  function buildDrawer(name: string, docs: readonly SandboxApiDoc[], emptyText: string): Drawer {
     const section = document.createElement('section');
     section.className = 'api-ref-drawer';
+    // The drawer name lives in the filter placeholder, which disappears once
+    // the user types — the section keeps the name for assistive tech (and
+    // as a hover tooltip) so the two panes stay distinguishable.
+    section.setAttribute('aria-label', name);
+    section.title = name;
     const header = document.createElement('div');
     header.className = 'api-ref-drawer-header';
-    const titleEl = document.createElement('span');
-    titleEl.className = 'api-ref-drawer-title';
-    titleEl.textContent = title;
+    const filter = document.createElement('input');
+    filter.className = 'api-ref-filter';
+    filter.type = 'search';
+    filter.placeholder = name;
+    filter.setAttribute('aria-label', `Filter ${name.toLowerCase()}`);
     const drawer: Drawer = {
       docs,
       sort: SORT_OPTIONS[0]!.state,
       emptyText,
+      section,
       body: document.createElement('div'),
+      filter,
     };
     const select = sortSelect((state) => {
       drawer.sort = state;
-      render();
+      renderDrawer(drawer);
     });
-    header.append(titleEl, select);
+    filter.addEventListener('input', () => renderDrawer(drawer));
+    header.append(filter, select);
     drawer.body.className = 'api-ref-rows';
     section.append(header, drawer.body);
-    drawers.appendChild(section);
+    renderDrawer(drawer);
     return drawer;
   }
-
-  const variablesDrawer = buildDrawer('Variables & constants', variables, 'No matching variables.');
-  const functionsDrawer = buildDrawer('Functions', functions, 'No matching functions.');
 
   function renderRow(doc: SandboxApiDoc): HTMLElement {
     const row = document.createElement('div');
@@ -124,7 +107,7 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
   }
 
   function renderDrawer(drawer: Drawer): void {
-    const visible = sortDocs(filterDocs(drawer.docs, filterInput.value), drawer.sort.key, drawer.sort.direction);
+    const visible = sortDocs(filterDocs(drawer.docs, drawer.filter.value), drawer.sort.key, drawer.sort.direction);
     drawer.body.textContent = '';
     if (visible.length === 0) {
       const empty = document.createElement('div');
@@ -136,18 +119,48 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
     for (const doc of visible) drawer.body.appendChild(renderRow(doc));
   }
 
-  function render(): void {
-    renderDrawer(variablesDrawer);
-    renderDrawer(functionsDrawer);
-  }
+  const variablesDrawer = buildDrawer(
+    'Variables & constants',
+    SANDBOX_API_DOCS.filter((d) => d.kind === 'variable'),
+    'No matching variables.',
+  );
+  const functionsDrawer = buildDrawer(
+    'Functions',
+    SANDBOX_API_DOCS.filter((d) => d.kind === 'function'),
+    'No matching functions.',
+  );
 
-  filterInput.addEventListener('input', render);
-  render();
-
-  return {
-    el,
-    setShowLastOutput(visible: boolean): void {
-      showOutputBtn.hidden = !visible;
+  // Draggable divider between the two drawers — shares the drag behavior of
+  // the editor/output splitter, but horizontal and session-local (not
+  // persisted).
+  const splitter = document.createElement('div');
+  splitter.className = 'api-ref-splitter';
+  // setAttribute, not the .role IDL property — ARIA reflection is missing in
+  // older engines, where the property assignment is a silent expando.
+  splitter.setAttribute('role', 'separator');
+  splitter.setAttribute('aria-orientation', 'vertical');
+  splitter.setAttribute('aria-label', 'Resize drawers');
+  splitter.title = 'Resize drawers';
+  attachSplitterDrag(splitter, {
+    axis: 'x',
+    container: el,
+    resizeTarget: el,
+    min: 0.2,
+    max: 0.8,
+    onRatio: (ratio) => {
+      // Fix the left drawer at the ratio and let the right one absorb the
+      // remainder — the splitter's own width then can't skew the split.
+      const left = variablesDrawer.section.style;
+      left.flexGrow = '0';
+      left.flexShrink = '0';
+      left.flexBasis = `${(ratio * 100).toFixed(2)}%`;
+      const right = functionsDrawer.section.style;
+      right.flexGrow = '1';
+      right.flexShrink = '1';
+      right.flexBasis = 'auto';
     },
-  };
+  });
+
+  el.append(variablesDrawer.section, splitter, functionsDrawer.section);
+  return el;
 }

@@ -117,8 +117,8 @@ export class ScriptConsoleWorkspaceStore {
     const persisted = readJson<PersistedWorkspace>(storage, WORKSPACE_KEY);
     this.openSheetIds = persisted?.openSheetIds ? [...persisted.openSheetIds] : [];
     this.activeSheetId = persisted?.activeSheetId ?? null;
-    // Restored sheets always start on the API reference drawers (issue #30):
-    // a sheet with history offers "Show last output" instead of auto-opening.
+    // Restored sheets always start on the API reference drawers (issue #30);
+    // history stays reachable via the header Output button.
     this.sheets = persisted?.sheets
       ? persisted.sheets.map((s) => ({ ...s, outputLines: [...s.outputLines], outputVisible: false }))
       : [];

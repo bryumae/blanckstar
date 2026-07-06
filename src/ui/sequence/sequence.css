@@ -305,6 +305,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* min-height: 0 is load-bearing — without it the pane refuses to shrink
+   * below the drawers' natural height and pushes past the viewport. */
+  min-height: 0;
   background: var(--bg-viewport);
 }
 
@@ -428,32 +431,25 @@
   display: none;
 }
 
-/* read-only sandbox API reference drawers (issue #30) */
+/* read-only sandbox API reference drawers (issue #30): the panel root IS the
+ * side-by-side drawers container; each drawer scrolls its own rows */
 .script-api-reference {
   flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 0;
+  overflow: hidden;
 }
 
 .script-api-reference[hidden] {
   display: none;
 }
 
-.api-ref-toolbar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 15px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-body);
-}
-
+/* per-drawer filter input — the drawer's name doubles as the placeholder */
 .api-ref-filter {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-control);
   background: var(--bg-input);
@@ -467,55 +463,36 @@
   border-color: var(--accent);
 }
 
-.api-ref-show-output {
-  flex: 0 0 auto;
-  padding: 5px 10px;
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-control);
-  background: var(--bg-input);
-  color: var(--text-tertiary);
-  font-family: var(--font-ui);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.api-ref-show-output:hover {
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
-
-.api-ref-drawers {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: auto;
-  min-height: 0;
-}
-
 .api-ref-drawer {
+  flex: 1 1 50%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* draggable divider between the two drawers */
+.api-ref-splitter {
+  flex: 0 0 7px;
+  cursor: col-resize;
+  background: var(--border-primary);
+  border-left: 3px solid var(--bg-viewport);
+  border-right: 3px solid var(--bg-viewport);
+}
+
+.api-ref-splitter:hover,
+.script-api-reference.is-resizing .api-ref-splitter {
+  background: var(--accent);
 }
 
 .api-ref-drawer-header {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 15px;
+  gap: 8px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-panel-header);
-}
-
-.api-ref-drawer-title {
-  font-size: 10px;
-  letter-spacing: var(--ls-caps);
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
 }
 
 .api-ref-sort {
@@ -530,6 +507,9 @@
 }
 
 .api-ref-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }

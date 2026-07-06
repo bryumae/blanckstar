@@ -157,7 +157,7 @@ describe('mountSequenceScreen', () => {
     const body = root.querySelector('.script-workspace-body') as HTMLElement;
     body.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 400, right: 1000, bottom: 400, x: 0, y: 0, toJSON: () => '' });
     (root.querySelector('.script-splitter') as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { clientY: 200 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 288 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 288, buttons: 1 }));
     window.dispatchEvent(new MouseEvent('mouseup'));
     handle.destroy();
 
@@ -167,7 +167,7 @@ describe('mountSequenceScreen', () => {
     expect((root2.querySelector('.script-textarea') as HTMLTextAreaElement).value).toBe('log("persisted")');
     // Restored sheets start on the drawers (issue #30); history is a click away.
     expect((root2.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(true);
-    (root2.querySelector('.api-ref-show-output') as HTMLButtonElement).click();
+    (root2.querySelector('.script-btn.output') as HTMLButtonElement).click();
     expect(root2.querySelector('.script-console-lines')!.textContent).toContain('persisted output');
     expect((root2.querySelector('.script-editor-col') as HTMLElement).style.flexBasis).toBe('72.00%');
   });
@@ -178,7 +178,7 @@ describe('mountSequenceScreen', () => {
     const body = root.querySelector('.script-workspace-body') as HTMLElement;
     body.getBoundingClientRect = () => ({ left: 100, top: 50, width: 1000, height: 400, right: 1100, bottom: 450, x: 100, y: 50, toJSON: () => '' });
     (root.querySelector('.script-splitter') as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { clientY: 200 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 390 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 390, buttons: 1 }));
     window.dispatchEvent(new MouseEvent('mouseup'));
     expect((root.querySelector('.script-editor-col') as HTMLElement).style.flexBasis).toBe('75.00%');
     handle.destroy();
@@ -192,25 +192,36 @@ describe('mountSequenceScreen', () => {
     mountWithSink(root);
     expect((root.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(true);
     expect((root.querySelector('.script-api-reference') as HTMLElement).hidden).toBe(false);
-    // No history yet — no "Show last output" affordance.
-    expect((root.querySelector('.api-ref-show-output') as HTMLButtonElement).hidden).toBe(true);
-    const titles = [...root.querySelectorAll('.api-ref-drawer-title')].map((e) => e.textContent);
-    expect(titles).toEqual(['Variables & constants', 'Functions']);
+    // The header Output button is available while the drawers show.
+    expect((root.querySelector('.script-btn.output') as HTMLButtonElement).disabled).toBe(false);
+    // Each drawer's filter carries the drawer name as its placeholder.
+    const placeholders = [...root.querySelectorAll('.api-ref-filter')].map((e) => (e as HTMLInputElement).placeholder);
+    expect(placeholders).toEqual(['Variables & constants', 'Functions']);
+    // The sections keep the drawer name for assistive tech — the placeholder
+    // disappears once the user types.
+    const labels = [...root.querySelectorAll('.api-ref-drawer')].map((e) => e.getAttribute('aria-label'));
+    expect(labels).toEqual(['Variables & constants', 'Functions']);
+    const drawerSplitter = root.querySelector('.api-ref-splitter')!;
+    expect(drawerSplitter.getAttribute('role')).toBe('separator');
+    expect(drawerSplitter.getAttribute('aria-orientation')).toBe('vertical');
   });
 
   it('Run opens the output pane; close returns to drawers with history kept', () => {
     const { sink } = mountWithSink(root);
+    const outputBtn = root.querySelector('.script-btn.output') as HTMLButtonElement;
     (root.querySelector('.script-btn.run') as HTMLButtonElement).click();
     expect((root.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(false);
+    // Output is already open — the header button grays out.
+    expect(outputBtn.disabled).toBe(true);
     sink.appendLine('log', 'run line');
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('run line');
 
     (root.querySelector('.script-console-close') as HTMLButtonElement).click();
     expect((root.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(true);
     expect((root.querySelector('.script-api-reference') as HTMLElement).hidden).toBe(false);
-    expect((root.querySelector('.api-ref-show-output') as HTMLButtonElement).hidden).toBe(false);
+    expect(outputBtn.disabled).toBe(false);
 
-    (root.querySelector('.api-ref-show-output') as HTMLButtonElement).click();
+    outputBtn.click();
     expect((root.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(false);
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('run line');
   });
@@ -239,7 +250,7 @@ describe('mountSequenceScreen', () => {
     sink.appendLine('log', 'second line');
     expect((root.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(true);
     // History still accumulated while closed.
-    (root.querySelector('.api-ref-show-output') as HTMLButtonElement).click();
+    (root.querySelector('.script-btn.output') as HTMLButtonElement).click();
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('second line');
   });
 
@@ -271,7 +282,7 @@ describe('mountSequenceScreen', () => {
     sink.appendLine('event', 'burn started');
     expect((root.querySelector('.script-api-reference') as HTMLElement).hidden).toBe(false);
     // The line is still recorded for later inspection.
-    (root.querySelector('.api-ref-show-output') as HTMLButtonElement).click();
+    (root.querySelector('.script-btn.output') as HTMLButtonElement).click();
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('burn started');
   });
 
@@ -288,20 +299,54 @@ describe('mountSequenceScreen', () => {
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('boom (line 3)');
   });
 
-  it('the shared filter narrows both drawers and shows per-drawer empty states', () => {
+  it('each drawer filters independently with its own empty state', () => {
     mountWithSink(root);
-    const filter = root.querySelector('.api-ref-filter') as HTMLInputElement;
-    filter.value = 'burn';
-    filter.dispatchEvent(new Event('input'));
-    const names = [...root.querySelectorAll('.api-ref-name')].map((e) => e.textContent);
-    expect(names.some((n) => n!.startsWith('ship.burn('))).toBe(true);
-    expect(names.some((n) => n!.startsWith('vec('))).toBe(false);
-    expect(root.querySelector('.api-ref-empty')!.textContent).toBe('No matching variables.');
+    const [varFilter, fnFilter] = [...root.querySelectorAll('.api-ref-filter')] as HTMLInputElement[];
+    const drawerNames = (i: number) =>
+      [...root.querySelectorAll('.api-ref-drawer')[i]!.querySelectorAll('.api-ref-name')].map((e) => e.textContent);
 
-    filter.value = 'zz-no-match';
-    filter.dispatchEvent(new Event('input'));
+    fnFilter!.value = 'burn';
+    fnFilter!.dispatchEvent(new Event('input'));
+    expect(drawerNames(1).some((n) => n!.startsWith('ship.burn('))).toBe(true);
+    expect(drawerNames(1).some((n) => n!.startsWith('vec('))).toBe(false);
+    // The variables drawer is untouched by the functions filter.
+    expect(drawerNames(0)).toContain('AU');
+
+    varFilter!.value = 'zz-no-match';
+    varFilter!.dispatchEvent(new Event('input'));
     const empties = [...root.querySelectorAll('.api-ref-empty')].map((e) => e.textContent);
-    expect(empties).toEqual(['No matching variables.', 'No matching functions.']);
+    expect(empties).toEqual(['No matching variables.']);
+    expect(drawerNames(1).length).toBeGreaterThan(0);
+  });
+
+  it('dragging the drawer splitter resizes the two drawers with clamping', () => {
+    mountWithSink(root);
+    const drawers = root.querySelector('.script-api-reference') as HTMLElement;
+    drawers.getBoundingClientRect = () => ({ left: 100, top: 0, width: 1000, height: 300, right: 1100, bottom: 300, x: 100, y: 0, toJSON: () => '' });
+    const splitter = root.querySelector('.api-ref-splitter') as HTMLElement;
+    const sections = root.querySelectorAll('.api-ref-drawer');
+
+    splitter.dispatchEvent(new MouseEvent('mousedown', { clientX: 600 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 400, buttons: 1 }));
+    // Left drawer is pinned to the ratio; the right one absorbs the rest.
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('30.00%');
+    expect((sections[1] as HTMLElement).style.flexBasis).toBe('auto');
+
+    // Clamped at 20% / 80%.
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0, buttons: 1 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+    window.dispatchEvent(new MouseEvent('mouseup'));
+
+    // Released: further moves change nothing.
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 900, buttons: 1 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+
+    // A move with no button held ends a drag whose mouseup was missed.
+    splitter.dispatchEvent(new MouseEvent('mousedown', { clientX: 600 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 700, buttons: 1 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
   });
 
   it('drawer sort reorders rows in both directions without touching the other drawer', () => {

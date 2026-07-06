@@ -14,6 +14,7 @@ import {
   type ConsoleOutputLine,
 } from './workspaceStore';
 import { createApiReferencePanel } from './apiReference';
+import { attachSplitterDrag } from './splitter';
 import './sequence.css';
 
 export type { ConsoleLineKind } from './workspaceStore';
@@ -132,7 +133,11 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const stopBtn = document.createElement('button');
   stopBtn.className = 'script-btn stop';
   stopBtn.textContent = 'Stop';
-  buttons.append(runBtn, stopBtn);
+  const outputBtn = document.createElement('button');
+  outputBtn.className = 'script-btn output';
+  outputBtn.textContent = 'Output';
+  outputBtn.title = 'Show console output';
+  buttons.append(runBtn, stopBtn, outputBtn);
   editorHeader.append(editorTitle, buttons);
 
   const editor = document.createElement('div');
@@ -148,7 +153,11 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   const splitter = document.createElement('div');
   splitter.className = 'script-splitter';
-  splitter.role = 'separator';
+  // setAttribute, not the .role IDL property — ARIA reflection is missing in
+  // older engines, where the property assignment is a silent expando.
+  splitter.setAttribute('role', 'separator');
+  splitter.setAttribute('aria-orientation', 'horizontal');
+  splitter.setAttribute('aria-label', 'Resize editor and output');
   splitter.title = 'Resize editor and output';
 
   // Lower pane: either the sheet's console output or the read-only API
@@ -177,10 +186,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const linesEl = document.createElement('div');
   linesEl.className = 'script-console-lines';
   outputView.append(outHeader, linesEl);
-  const refPanel = createApiReferencePanel(() => {
-    setActiveOutputVisible(true);
-  });
-  outCol.append(outputView, refPanel.el);
+  const apiReference = createApiReferencePanel();
+  outCol.append(outputView, apiReference);
 
   body.append(editorCol, splitter, outCol);
   work.append(sheetTabs, body);
@@ -292,10 +299,11 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   function renderLowerPane(): void {
     const sheet = currentSheet();
     outputView.hidden = !sheet.outputVisible;
-    refPanel.el.hidden = sheet.outputVisible;
+    apiReference.hidden = sheet.outputVisible;
+    // The header Output button re-opens the pane; grayed while already open.
+    outputBtn.disabled = sheet.outputVisible;
     // Render lines even while hidden so the pane never shows a stale sheet.
     renderOutput(sheet.outputLines);
-    refPanel.setShowLastOutput(sheet.outputLines.length > 0);
   }
 
   function effectiveStatus(sheet: CodeSheetState): CodeSheetStatus {
@@ -491,27 +499,24 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   closeOutputBtn.addEventListener('click', () => {
     setActiveOutputVisible(false);
   });
+  outputBtn.addEventListener('click', () => {
+    setActiveOutputVisible(true);
+  });
   stopBtn.addEventListener('click', () => {
     deps.console.stop();
   });
 
-  splitter.addEventListener('mousedown', (event) => {
-    event.preventDefault();
-    body.classList.add('is-resizing');
-    const onMove = (move: MouseEvent): void => {
-      const rect = body.getBoundingClientRect();
-      const height = rect.height || body.clientHeight;
-      if (height <= 0) return;
-      workspace.setSplitRatio((move.clientY - rect.top) / height);
+  attachSplitterDrag(splitter, {
+    axis: 'y',
+    container: body,
+    resizeTarget: body,
+    // The store's clampSplitRatio owns the real bounds.
+    min: 0,
+    max: 1,
+    onRatio: (ratio) => {
+      workspace.setSplitRatio(ratio);
       applySplit();
-    };
-    const onUp = (): void => {
-      body.classList.remove('is-resizing');
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    },
   });
 
   const sink: ConsoleSink = {
