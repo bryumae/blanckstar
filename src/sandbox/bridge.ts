@@ -256,14 +256,14 @@ export class SandboxBridge {
         try {
           this.deps.sandboxVars?.setValue(msg.name, msg.value);
         } catch (err) {
-          this.deps.onScriptError?.(err instanceof Error ? err.message : String(err), null);
+          this.failVarMutation(err);
         }
         return;
       case 'varDelete':
         try {
           this.deps.sandboxVars?.deleteValue(msg.name);
         } catch (err) {
-          this.deps.onScriptError?.(err instanceof Error ? err.message : String(err), null);
+          this.failVarMutation(err);
         }
         return;
     }
@@ -280,6 +280,12 @@ export class SandboxBridge {
       this.unresponsive = false;
       this.deps.onUnresponsive?.(false);
     }
+  }
+
+  private failVarMutation(err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err);
+    this.stop();
+    this.deps.onScriptError?.(message, null);
   }
 
   private reply(callId: number, ok: boolean, value?: unknown, error?: string): void {

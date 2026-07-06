@@ -70,6 +70,7 @@ async function main(): Promise<void> {
   const measurements = createMeasurementMirror();
   let simEpoch = 0;
   let currentSeedId: string | null = initialRun?.scenarioId ?? null;
+  let bridge: SandboxBridge | null = null;
   const createGameId = (): string =>
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   };
   const sendFromUi = (command: SimCommand): void => {
     if (command.type === 'reset' && currentSeedId) {
+      bridge?.stop();
       setRunNamespace(currentSeedId, false);
     }
     post(command);
@@ -172,7 +174,7 @@ async function main(): Promise<void> {
 
   // ---- sandbox bridge + sequence screen ----
   let sink: ConsoleSink | null = null;
-  const bridge = new SandboxBridge({
+  bridge = new SandboxBridge({
     createSandboxWorker: () =>
       new Worker(new URL('./sandbox/worker.ts', import.meta.url), { type: 'module' }),
     postToSim: post,

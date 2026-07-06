@@ -1,12 +1,11 @@
 import type { StorageLike } from './storage';
-import { readJson, writeJson } from './storage';
+import { readJson } from './storage';
 import {
   SANDBOX_VAR_TOTAL_SIZE_LIMIT,
   cloneSandboxVarValue,
   validateSandboxVarDescription,
   validateSandboxVarName,
   validateSandboxVarValue,
-  validateSandboxVarsTotalSize,
   type SandboxVarEntry,
   type SandboxVarValue,
   type SandboxVarsSnapshot,
@@ -24,6 +23,8 @@ export type SandboxVarsListener = () => void;
 
 export class SandboxVarsStore {
   private namespace: string | null = null;
+  private cachedNamespace: string | null = null;
+  private cachedEntries: SandboxVarEntry[] | null = null;
   private readonly listeners = new Set<SandboxVarsListener>();
   private readonly now: () => number;
   private readonly totalSizeLimitBytes: number;
@@ -122,10 +123,24 @@ export class SandboxVarsStore {
   }
 
   private readEntries(): SandboxVarEntry[] {
+    if (this.cachedNamespace === this.namespace && this.cachedEntries !== null) {
+      return this.cachedEntries.map((entry) => ({
+        ...entry,
+        value: cloneSandboxVarValue(entry.value),
+      }));
+    }
     const key = this.storageKey();
-    if (!key) return [];
+    if (!key) {
+      this.cachedNamespace = this.namespace;
+      this.cachedEntries = [];
+      return [];
+    }
     const snapshot = readJson<SandboxVarsSnapshot>(this.storage, key);
-    if (!snapshot || !Array.isArray(snapshot.entries)) return [];
+    if (!snapshot || !Array.isArray(snapshot.entries)) {
+      this.cachedNamespace = this.namespace;
+      this.cachedEntries = [];
+      return [];
+    }
     const entries: SandboxVarEntry[] = [];
     for (const entry of snapshot.entries) {
       try {
@@ -143,14 +158,29 @@ export class SandboxVarsStore {
         // Ignore corrupt rows without discarding the rest of the store.
       }
     }
-    return entries;
+    this.cachedNamespace = this.namespace;
+    this.cachedEntries = entries;
+    return entries.map((entry) => ({
+      ...entry,
+      value: cloneSandboxVarValue(entry.value),
+    }));
   }
 
   private writeEntries(entries: readonly SandboxVarEntry[], changedName: string): void {
     const key = this.storageKey();
     if (!key) return;
-    validateSandboxVarsTotalSize(entries, this.totalSizeLimitBytes, changedName);
-    writeJson<SandboxVarsSnapshot>(this.storage, key, { entries });
+    const snapshot: SandboxVarsSnapshot = { entries };
+    const raw = JSON.stringify(snapshot);
+    const bytes = new TextEncoder().encode(raw).length;
+    if (bytes > this.totalSizeLimitBytes) {
+      throw new Error(`vars.${changedName} exceeds the ${this.totalSizeLimitBytes} byte variable store limit`);
+    }
+    this.storage.setItem(key, raw);
+    this.cachedNamespace = this.namespace;
+    this.cachedEntries = entries.map((entry) => ({
+      ...entry,
+      value: cloneSandboxVarValue(entry.value),
+    }));
     this.emit();
   }
 

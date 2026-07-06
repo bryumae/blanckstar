@@ -411,6 +411,7 @@ describe('mountSequenceScreen', () => {
     expect(sink).not.toBeNull();
     expect(root.querySelector('.api-ref-row.player')?.textContent).toContain('burnTime');
     const input = root.querySelector('.api-ref-description-input') as HTMLInputElement;
+    expect(input.maxLength).toBe(500);
     input.value = 'main burn';
     input.dispatchEvent(new Event('change'));
     expect(vars.descriptions).toEqual([['burnTime', 'main burn']]);

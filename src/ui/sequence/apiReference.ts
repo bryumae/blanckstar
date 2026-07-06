@@ -12,6 +12,7 @@ import {
   type SandboxApiSortKey,
 } from '../../sandbox/apiDocs';
 import type { SandboxVarEntry } from '../../sandbox/vars';
+import { SANDBOX_VAR_DESCRIPTION_LIMIT } from '../../sandbox/vars';
 
 interface SortState {
   key: SandboxApiSortKey;
@@ -138,8 +139,18 @@ export function createApiReferencePanel(varsStore?: ApiReferenceVarsStore): ApiR
         input.className = 'api-ref-description-input';
         input.value = doc.description;
         input.placeholder = 'Description';
+        input.maxLength = SANDBOX_VAR_DESCRIPTION_LIMIT;
         input.setAttribute('aria-label', `Description for ${doc.name}`);
-        const persistDescription = () => varsStore?.setDescription(doc.name, input.value);
+        const persistDescription = () => {
+          try {
+            varsStore?.setDescription(doc.name, input.value);
+            input.setCustomValidity('');
+          } catch (err) {
+            input.setCustomValidity(err instanceof Error ? err.message : String(err));
+            input.reportValidity();
+            input.value = doc.description;
+          }
+        };
         input.addEventListener('change', persistDescription);
         input.addEventListener('blur', persistDescription);
         const modified = document.createElement('span');

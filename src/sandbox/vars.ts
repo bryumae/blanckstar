@@ -82,26 +82,31 @@ export function cloneSandboxVarValue(value: SandboxVarValue): SandboxVarValue {
 }
 
 export function createSandboxVarsProxy(deps: CreateSandboxVarsDeps): Record<string, SandboxVarValue> {
-  let entries = deps.snapshot.entries.map((entry) => ({
-    ...entry,
-    value: cloneSandboxVarValue(entry.value),
-  }));
-  const cache = snapshotValues({ entries });
+  const cache = snapshotValues(deps.snapshot);
+  const metadata = new Map<string, Pick<SandboxVarEntry, 'description' | 'modified'>>();
+  for (const entry of deps.snapshot.entries) {
+    metadata.set(entry.name, { description: entry.description, modified: entry.modified });
+  }
+
+  function entriesWith(name: string, value: SandboxVarValue): SandboxVarEntry[] {
+    const nextMetadata = metadata.get(name) ?? { description: '', modified: PREDICTED_MODIFIED };
+    const names = new Set([...Object.keys(cache), name]);
+    return [...names].map((entryName) => ({
+      name: entryName,
+      value: entryName === name ? value : cache[entryName]!,
+      description: entryName === name ? nextMetadata.description : metadata.get(entryName)?.description ?? '',
+      modified: entryName === name ? PREDICTED_MODIFIED : metadata.get(entryName)?.modified ?? PREDICTED_MODIFIED,
+    }));
+  }
 
   function upsertLocal(name: string, value: SandboxVarValue): void {
-    const existing = entries.find((entry) => entry.name === name);
-    const nextEntry: SandboxVarEntry = {
-      name,
-      value,
-      description: existing?.description ?? '',
-      modified: PREDICTED_MODIFIED,
-    };
-    const next = existing
-      ? entries.map((entry) => (entry.name === name ? nextEntry : entry))
-      : [...entries, nextEntry];
+    const next = entriesWith(name, value);
     validateSandboxVarsTotalSize(next, deps.totalSizeLimitBytes, name);
-    entries = next;
     cache[name] = cloneSandboxVarValue(value);
+    metadata.set(name, {
+      description: metadata.get(name)?.description ?? '',
+      modified: PREDICTED_MODIFIED,
+    });
   }
 
   return new Proxy(cache, {
@@ -123,8 +128,8 @@ export function createSandboxVarsProxy(deps: CreateSandboxVarsDeps): Record<stri
     deleteProperty(target, prop) {
       if (typeof prop !== 'string') return false;
       validateSandboxVarName(prop, deps.reservedNames);
-      entries = entries.filter((entry) => entry.name !== prop);
       delete target[prop];
+      metadata.delete(prop);
       deps.deleteVar(prop);
       return true;
     },
