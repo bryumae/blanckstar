@@ -1,15 +1,15 @@
-// Physics glue for the simulation worker: builds the RK4 acceleration callback
-// (gravity from Sun+Earth+Moon plus commanded engine thrust) and advances the
-// ship state one substep. The heavy lifting lives in src/core (rk4Step,
-// gravityAcceleration, positionAt); this module only wires them to the moving
-// ephemeris and the current thrust vector.
-import type { State, Acceleration } from '../core/rk4';
-import { rk4Step } from '../core/rk4';
-import type { EphemerisData } from '../core/ephemerisTypes';
-import { positionAt } from '../core/ephemerisInterp';
-import { gravityAcceleration } from '../core/gravity';
-import type { GravitatingBodies } from '../core/gravity';
-import type { Vector3 } from '../core/vector3';
+// Shared acceleration-composition + one-substep RK4 advance (gravity from
+// Sun+Earth+Moon plus commanded engine thrust). Pure core logic so the sim
+// worker, the sandbox worker, and UI predictors all share one implementation
+// instead of copying it (see issue #17: predictor-parity fixes in PR #14
+// worked around a divergence caused by this duplication).
+import type { State, Acceleration } from './rk4';
+import { rk4Step } from './rk4';
+import type { EphemerisData } from './ephemerisTypes';
+import { positionAt } from './ephemerisInterp';
+import { gravityAcceleration } from './gravity';
+import type { GravitatingBodies } from './gravity';
+import type { Vector3 } from './vector3';
 
 // Gravitating-body positions sampled at time t (§4.3: Sun+Earth+Moon only).
 export function gravitatingBodiesAt(ephemeris: EphemerisData, t: number): GravitatingBodies {

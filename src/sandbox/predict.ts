@@ -1,30 +1,25 @@
 // In-worker trajectory prediction (mvp0_spec.md §7.7, §8.2 predict()). Runs the
 // EXACT same engine as the live sim (src/core rk4 + gravity + tiered timestep +
-// Hermite ephemeris, and src/sim/physics for the acceleration wiring) against a
-// PLAYER-ENTERED state — never the hidden ship truth. Output is a table of
-// samples; no map, no plots (§7.7 tables only).
+// Hermite ephemeris + acceleration wiring) against a PLAYER-ENTERED state —
+// never the hidden ship truth. Output is a table of samples; no map, no plots
+// (§7.7 tables only).
 //
 // This lives in the sandbox worker so `predict()` needs no sim round-trip: the
 // bridge hands the worker the ephemeris at run start, and the same code path the
 // simulation uses (advance/selectTimestep/stepToBoundary) propagates here. That
 // is the "same engine guarantee" from §7.7/§8.2 — shared src/core, not a copy.
 import type { Vector3 } from '../core/vector3';
-import { normalize, mul } from '../core/vector3';
 import type { State } from '../core/rk4';
 import type { EphemerisData } from '../core/ephemerisTypes';
 import { selectTimestep, stepToBoundary } from '../core/timestep';
 import { MAX_ACCELERATION } from '../core/constants';
-import { gravitatingBodiesAt, advance } from '../sim/physics';
+import { gravitatingBodiesAt, advance } from '../core/advance';
+import type { Burn } from '../core/burn';
+import { thrustAt, burnBoundaries } from '../core/burn';
 
-// A burn in a predict() plan: re-point to `direction` at `startTime`, thrust at
-// `throttle` for `duration` seconds. Mirrors the sim's scheduled-burn semantics
+// A burn in a predict() plan: mirrors the sim's scheduled-burn semantics
 // (§5.3) but is applied to the entered state, not the ship.
-export interface PredictBurn {
-  readonly startTime: number; // unix seconds
-  readonly direction: Vector3;
-  readonly throttle: number;
-  readonly duration: number; // seconds
-}
+export type PredictBurn = Burn;
 
 // One row of the predicted trajectory table (§7.7).
 export interface PredictSample {
@@ -37,28 +32,6 @@ export interface PredictInput {
   readonly position: Vector3;
   readonly velocity: Vector3;
   readonly epoch: number; // unix seconds; start time of the propagation
-}
-
-// Thrust acceleration vector for a burn active at time t, or zero. At most one
-// burn is active at once (windows must not overlap, matching the sim's
-// BurnManager contract); the first covering burn wins.
-function thrustAt(burns: readonly PredictBurn[], t: number, maxAccel: number): Vector3 {
-  for (const b of burns) {
-    if (t >= b.startTime && t < b.startTime + b.duration) {
-      return mul(normalize(b.direction), b.throttle * maxAccel);
-    }
-  }
-  return { x: 0, y: 0, z: 0 };
-}
-
-// All burn start/end times strictly after `now`, so steps snap onto burn
-// boundaries exactly the way the sim does (§4.4).
-function burnBoundaries(burns: readonly PredictBurn[]): number[] {
-  const out: number[] = [];
-  for (const b of burns) {
-    out.push(b.startTime, b.startTime + b.duration);
-  }
-  return out;
 }
 
 // Propagate `state` from `epoch` for `duration` seconds, emitting a sample every

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+- Closes #17: lifts the shared "gravity + thrust + tiered-timestep RK4
+  advance" wiring (`gravitatingBodiesAt`/`makeAcceleration`/`advance`,
+  formerly `src/sim/physics.ts`) and the scheduled-burn helpers
+  (`thrustAt`/`burnBoundaries`, formerly duplicated as `PredictBurn`
+  in `src/sandbox/predict.ts` and `PredictorBurn` in
+  `src/ui/sequence/tabs/predictorEngine.ts`) into pure `src/core/advance.ts`
+  and `src/core/burn.ts` modules, importable by the sim, the sandbox, and the
+  UI alike — the root cause behind the predictor-parity fixes in PR #14.
+  Also: `src/render/astro.ts`'s `phaseAngle()` now delegates to
+  `src/core/vector3.ts`'s `angleBetween()` instead of re-deriving the same
+  dot/norm/acos math, and `src/ui/data/format.ts`/`src/ui/shell/format.ts`'s
+  identical `fmtKm`/`fmtKmPerS`/`fmtDegrees` are hoisted into a shared
+  `src/ui/format.ts` (their non-identical `fmtMet` — one has a "MET " prefix,
+  one doesn't — stays screen-local, and `src/ui/debug/format.ts`'s
+  vector-shaped formatters were left as-is since they're a genuinely
+  different API, not a literal duplicate).
+
 - Fixes #16: `mountTelescopeScreen`'s and `mountDebugOverlay`'s `destroy()`
   now abort the `window`-level `mousemove`/`mouseup` (and, for the telescope
   screen, filter-menu-close `click`) listeners added at mount, via a shared
