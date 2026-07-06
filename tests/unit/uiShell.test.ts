@@ -263,13 +263,19 @@ describe('mountShell (§7 intro, §2)', () => {
     expect(root.querySelectorAll('.shell-seed-card').length).toBe(2);
   });
 
-  it('destroy removes the sim listener and clears the DOM', () => {
+  it('destroy removes listeners and clears the DOM', () => {
     const root = document.createElement('div');
     const { deps, listenerCount } = makeHarness();
     const handle = mountShell(root, deps);
+    const warp = root.querySelector('.shell-warp')!;
+    const warpCompact = root.querySelector('.shell-warp-compact') as HTMLButtonElement;
     expect(listenerCount()).toBe(1);
+    warpCompact.click();
+    expect(warp.classList.contains('is-open')).toBe(true);
     handle.destroy();
+    window.dispatchEvent(new Event('click'));
     expect(listenerCount()).toBe(0);
+    expect(warp.classList.contains('is-open')).toBe(true);
     expect(root.textContent).toBe('');
   });
 });

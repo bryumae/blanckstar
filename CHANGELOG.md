@@ -9,6 +9,11 @@
   across reloads, and the editor/output area uses a persisted draggable
   horizontal split.
 
+- Fixes #24: `mountShell` now scopes its window-level warp-panel close
+  listener to the mount lifecycle with an `AbortController`, so
+  `destroy()` removes both the sim listener and the shell's window listener
+  before clearing the DOM.
+
 - Closes #17: lifts the shared "gravity + thrust + tiered-timestep RK4
   advance" wiring (`gravitatingBodiesAt`/`makeAcceleration`/`advance`,
   formerly `src/sim/physics.ts`) and the scheduled-burn helpers
