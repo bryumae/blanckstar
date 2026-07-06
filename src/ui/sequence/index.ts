@@ -13,6 +13,7 @@ import {
   type ConsoleLineKind,
   type ConsoleOutputLine,
 } from './workspaceStore';
+import { createApiReferencePanel } from './apiReference';
 import './sequence.css';
 
 export type { ConsoleLineKind } from './workspaceStore';
@@ -60,6 +61,7 @@ function sheetFromScript(script: ScriptEntry): CodeSheetState {
     source: script.source,
     outputLines: [],
     status: 'idle',
+    outputVisible: false,
   };
 }
 
@@ -79,6 +81,10 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   let activeSheetId = workspace.getActiveSheetId();
   let runningSheetId: string | null = deps.console.isRunning() ? activeSheetId : null;
   let unresponsive = false;
+  // Sheets whose output the player explicitly closed while their run was live:
+  // ordinary lines from that run stop auto-reopening (the close must stick),
+  // but errors and an unresponsive worker still force the pane open.
+  const outputClosedForRun = new Set<string>();
 
   // ---- left rail ----
   const rail = document.createElement('div');
@@ -145,8 +151,12 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   splitter.role = 'separator';
   splitter.title = 'Resize editor and output';
 
+  // Lower pane: either the sheet's console output or the read-only API
+  // reference drawers (issue #30), per the sheet's persisted outputVisible.
   const outCol = document.createElement('div');
   outCol.className = 'script-console-out is-open';
+  const outputView = document.createElement('div');
+  outputView.className = 'script-console-output-view';
   const outHeader = document.createElement('div');
   outHeader.className = 'script-console-header';
   const outLabel = document.createElement('span');
@@ -154,13 +164,23 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   outLabel.textContent = 'CONSOLE OUTPUT';
   const statusEl = document.createElement('span');
   statusEl.className = 'script-console-status';
+  const closeOutputBtn = document.createElement('button');
+  closeOutputBtn.className = 'script-console-close';
+  closeOutputBtn.type = 'button';
+  closeOutputBtn.textContent = '×';
+  closeOutputBtn.title = 'Close output';
+  closeOutputBtn.setAttribute('aria-label', 'Close console output');
   const headerRight = document.createElement('div');
   headerRight.className = 'script-console-header-right';
-  headerRight.append(statusEl);
+  headerRight.append(statusEl, closeOutputBtn);
   outHeader.append(outLabel, headerRight);
   const linesEl = document.createElement('div');
   linesEl.className = 'script-console-lines';
-  outCol.append(outHeader, linesEl);
+  outputView.append(outHeader, linesEl);
+  const refPanel = createApiReferencePanel(() => {
+    setActiveOutputVisible(true);
+  });
+  outCol.append(outputView, refPanel.el);
 
   body.append(editorCol, splitter, outCol);
   work.append(sheetTabs, body);
@@ -265,6 +285,19 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     linesEl.scrollTop = linesEl.scrollHeight;
   }
 
+  // Show the console output or the API reference drawers, per the active
+  // sheet's outputVisible (session state — the store restores every sheet to
+  // drawers on reload). Hoisted (function declaration) — the drawers panel
+  // above closes over it.
+  function renderLowerPane(): void {
+    const sheet = currentSheet();
+    outputView.hidden = !sheet.outputVisible;
+    refPanel.el.hidden = sheet.outputVisible;
+    // Render lines even while hidden so the pane never shows a stale sheet.
+    renderOutput(sheet.outputLines);
+    refPanel.setShowLastOutput(sheet.outputLines.length > 0);
+  }
+
   function effectiveStatus(sheet: CodeSheetState): CodeSheetStatus {
     if (runningSheetId === sheet.id) return unresponsive ? 'unresponsive' : 'running';
     return sheet.status === 'running' || sheet.status === 'unresponsive' ? 'idle' : sheet.status;
@@ -304,7 +337,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     nameInput.value = sheet.name;
     textarea.value = sheet.source;
     renderGutter();
-    renderOutput(sheet.outputLines);
+    renderLowerPane();
     renderRail();
     renderSheetTabs();
     renderStatus();
@@ -402,9 +435,29 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   function appendLineToSheet(id: string, kind: ConsoleLineKind, text: string): void {
     workspace.appendOutput(id, { kind, text });
-    if (id === activeSheetId) {
-      renderOutput(currentSheet().outputLines);
+    // Lines from a live run auto-open that sheet's output pane (issue #30) —
+    // covers a remount that restored the sheet to drawers mid-run. Only the
+    // receiving sheet flips; post-run event lines (scheduled burns firing
+    // later) never steal the active sheet's drawers, and an explicit mid-run
+    // close sticks. Errors always force the pane open.
+    const liveRunLine = id === runningSheetId && !outputClosedForRun.has(id);
+    if (liveRunLine || kind === 'error') {
+      workspace.setOutputVisible(id, true);
     }
+    if (id === activeSheetId) {
+      renderLowerPane();
+    }
+  }
+
+  function setActiveOutputVisible(visible: boolean): void {
+    if (!activeSheetId) return;
+    if (visible) {
+      outputClosedForRun.delete(activeSheetId);
+    } else if (activeSheetId === runningSheetId) {
+      outputClosedForRun.add(activeSheetId);
+    }
+    workspace.setOutputVisible(activeSheetId, visible);
+    renderLowerPane();
   }
 
   newBtn.addEventListener('click', () => {
@@ -427,13 +480,16 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   });
   runBtn.addEventListener('click', () => {
     const sheet = currentSheet();
-    workspace.clearOutput(sheet.id);
-    workspace.updateSheet(sheet.id, { status: 'running' });
+    workspace.updateSheet(sheet.id, { outputLines: [], status: 'running', outputVisible: true });
+    outputClosedForRun.delete(sheet.id);
     runningSheetId = sheet.id;
     unresponsive = false;
-    renderOutput([]);
+    renderLowerPane();
     renderStatus();
     deps.console.run(textarea.value);
+  });
+  closeOutputBtn.addEventListener('click', () => {
+    setActiveOutputVisible(false);
   });
   stopBtn.addEventListener('click', () => {
     deps.console.stop();
@@ -470,7 +526,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
       const id = runningSheetId ?? activeSheetId;
       if (!id) return;
       workspace.clearOutput(id);
-      if (id === activeSheetId) renderOutput([]);
+      if (id === activeSheetId) renderLowerPane();
     },
     setRunning(running) {
       if (running) {
@@ -484,7 +540,16 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     },
     setUnresponsive(value) {
       unresponsive = value;
-      if (runningSheetId) workspace.updateSheet(runningSheetId, { status: value ? 'unresponsive' : 'running' });
+      if (runningSheetId) {
+        workspace.updateSheet(runningSheetId, { status: value ? 'unresponsive' : 'running' });
+        // A hung script must not warn into a hidden pane — force the output
+        // open on the running sheet even past an explicit close.
+        if (value) {
+          outputClosedForRun.delete(runningSheetId);
+          workspace.setOutputVisible(runningSheetId, true);
+          if (runningSheetId === activeSheetId) renderLowerPane();
+        }
+      }
       renderStatus();
     },
     setError(message, line) {

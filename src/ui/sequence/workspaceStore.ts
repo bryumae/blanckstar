@@ -17,6 +17,9 @@ export interface CodeSheetState {
   readonly source: string;
   readonly outputLines: readonly ConsoleOutputLine[];
   readonly status: CodeSheetStatus;
+  // Whether the lower pane shows this sheet's console output (true) or the
+  // API reference drawers (false). Closing never clears outputLines.
+  readonly outputVisible: boolean;
 }
 
 interface PersistedWorkspace {
@@ -38,6 +41,7 @@ export const SEEDED_SHEETS: readonly CodeSheetState[] = [
     name: 'calculator.js',
     status: 'idle',
     outputLines: [],
+    outputVisible: false,
     source: `// Calculator sheet: use the sandbox vector helpers for quick checks.
 const a = vec(1, 2, 3);
 const b = vec(-2, 0.5, 4);
@@ -53,6 +57,7 @@ log('angle degrees:', (angleBetween(a, b) * 180 / Math.PI).toFixed(3));
     name: 'candidates.js',
     status: 'idle',
     outputLines: [],
+    outputVisible: false,
     source: `// Candidates sheet: inspect measurements collected by this run.
 const rows = await log.measurements();
 log('measurements:', rows.length);
@@ -68,6 +73,7 @@ for (const m of rows.slice(-5)) {
     name: 'trajectory-predictor.js',
     status: 'idle',
     outputLines: [],
+    outputVisible: false,
     source: `// Trajectory Predictor sheet: propagate a player-entered state.
 const status = await ship.status();
 const epoch = await time.now();
@@ -111,7 +117,11 @@ export class ScriptConsoleWorkspaceStore {
     const persisted = readJson<PersistedWorkspace>(storage, WORKSPACE_KEY);
     this.openSheetIds = persisted?.openSheetIds ? [...persisted.openSheetIds] : [];
     this.activeSheetId = persisted?.activeSheetId ?? null;
-    this.sheets = persisted?.sheets ? persisted.sheets.map((s) => ({ ...s, outputLines: [...s.outputLines] })) : [];
+    // Restored sheets always start on the API reference drawers (issue #30):
+    // a sheet with history offers "Show last output" instead of auto-opening.
+    this.sheets = persisted?.sheets
+      ? persisted.sheets.map((s) => ({ ...s, outputLines: [...s.outputLines], outputVisible: false }))
+      : [];
     this.splitRatio = clampSplitRatio(persisted?.splitRatio ?? DEFAULT_SPLIT);
   }
 
@@ -171,6 +181,14 @@ export class ScriptConsoleWorkspaceStore {
     const sheet = this.getSheet(id);
     if (!sheet) return;
     this.updateSheet(id, { outputLines: [...sheet.outputLines, line] });
+  }
+
+  // Flip a sheet's lower pane between console output and the API reference
+  // drawers. Output history is untouched either way. No-ops skip the persist —
+  // this can be called per output line during a run.
+  setOutputVisible(id: string, visible: boolean): void {
+    if (this.getSheet(id)?.outputVisible === visible) return;
+    this.updateSheet(id, { outputVisible: visible });
   }
 
   clearOutput(id: string): void {
