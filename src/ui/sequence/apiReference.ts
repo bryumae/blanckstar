@@ -11,44 +11,68 @@ import {
   type SandboxApiSortDirection,
   type SandboxApiSortKey,
 } from '../../sandbox/apiDocs';
+import type { SandboxVarEntry } from '../../sandbox/vars';
+import { SANDBOX_VAR_DESCRIPTION_LIMIT } from '../../sandbox/vars';
 
 interface SortState {
   key: SandboxApiSortKey;
   direction: SandboxApiSortDirection;
 }
 
-const SORT_OPTIONS: readonly { value: string; label: string; state: SortState }[] = [
+const BASE_SORT_OPTIONS: readonly { value: string; label: string; state: SortState }[] = [
   { value: 'name-asc', label: 'Name A–Z', state: { key: 'name', direction: 'asc' } },
   { value: 'name-desc', label: 'Name Z–A', state: { key: 'name', direction: 'desc' } },
   { value: 'description-asc', label: 'Description A–Z', state: { key: 'description', direction: 'asc' } },
   { value: 'description-desc', label: 'Description Z–A', state: { key: 'description', direction: 'desc' } },
 ];
 
-function sortSelect(onChange: (state: SortState) => void): HTMLSelectElement {
+const VARIABLE_SORT_OPTIONS: readonly { value: string; label: string; state: SortState }[] = [
+  ...BASE_SORT_OPTIONS,
+  { value: 'modified-desc', label: 'Modified newest', state: { key: 'modified', direction: 'desc' } },
+  { value: 'modified-asc', label: 'Modified oldest', state: { key: 'modified', direction: 'asc' } },
+];
+
+export interface ApiReferenceVarsStore {
+  list(): readonly SandboxVarEntry[];
+  setDescription(name: string, description: string): void;
+  deleteValue(name: string): void;
+  subscribe(listener: () => void): () => void;
+}
+
+export interface ApiReferencePanelHandle {
+  readonly element: HTMLElement;
+  destroy(): void;
+}
+
+function sortSelect(
+  options: readonly { value: string; label: string; state: SortState }[],
+  onChange: (state: SortState) => void,
+): HTMLSelectElement {
   const select = document.createElement('select');
   select.className = 'api-ref-sort';
   select.title = 'Sort';
-  for (const opt of SORT_OPTIONS) {
+  for (const opt of options) {
     const option = document.createElement('option');
     option.value = opt.value;
     option.textContent = opt.label;
     select.appendChild(option);
   }
   select.addEventListener('change', () => {
-    onChange(SORT_OPTIONS[select.selectedIndex]!.state);
+    onChange(options[select.selectedIndex]!.state);
   });
   return select;
 }
 
 // Returns the panel's root element — the side-by-side drawers container
 // itself; the caller toggles it against the console output view.
-export function createApiReferencePanel(): HTMLElement {
+export function createApiReferencePanel(varsStore?: ApiReferenceVarsStore): ApiReferencePanelHandle {
   const el = document.createElement('div');
   el.className = 'script-api-reference';
 
   interface Drawer {
     docs: readonly SandboxApiDoc[];
     sort: SortState;
+    sortOptions: readonly { value: string; label: string; state: SortState }[];
     emptyText: string;
     section: HTMLElement;
     body: HTMLElement;
@@ -57,7 +81,12 @@ export function createApiReferencePanel(): HTMLElement {
 
   // Each drawer header is its own filter input (the drawer's name doubles as
   // the placeholder) plus a sort select — no separate toolbar row.
-  function buildDrawer(name: string, docs: readonly SandboxApiDoc[], emptyText: string): Drawer {
+  function buildDrawer(
+    name: string,
+    docs: readonly SandboxApiDoc[],
+    emptyText: string,
+    sortOptions = BASE_SORT_OPTIONS,
+  ): Drawer {
     const section = document.createElement('section');
     section.className = 'api-ref-drawer';
     // The drawer name lives in the filter placeholder, which disappears once
@@ -74,13 +103,14 @@ export function createApiReferencePanel(): HTMLElement {
     filter.setAttribute('aria-label', `Filter ${name.toLowerCase()}`);
     const drawer: Drawer = {
       docs,
-      sort: SORT_OPTIONS[0]!.state,
+      sort: sortOptions[0]!.state,
+      sortOptions,
       emptyText,
       section,
       body: document.createElement('div'),
       filter,
     };
-    const select = sortSelect((state) => {
+    const select = sortSelect(sortOptions, (state) => {
       drawer.sort = state;
       renderDrawer(drawer);
     });
@@ -100,8 +130,48 @@ export function createApiReferencePanel(): HTMLElement {
     name.textContent = doc.kind === 'function' ? `${doc.name}(${doc.args})` : doc.name;
     const detail = document.createElement('span');
     detail.className = 'api-ref-detail';
-    detail.textContent =
-      doc.kind === 'variable' ? `${doc.value} — ${doc.description}` : doc.description;
+    if (doc.kind === 'variable') {
+      const value = document.createElement('span');
+      value.className = 'api-ref-value';
+      value.textContent = doc.value;
+      if (doc.source === 'player') {
+        const input = document.createElement('input');
+        input.className = 'api-ref-description-input';
+        input.value = doc.description;
+        input.placeholder = 'Description';
+        input.maxLength = SANDBOX_VAR_DESCRIPTION_LIMIT;
+        input.setAttribute('aria-label', `Description for ${doc.name}`);
+        const persistDescription = () => {
+          try {
+            varsStore?.setDescription(doc.name, input.value);
+            input.setCustomValidity('');
+          } catch (err) {
+            input.setCustomValidity(err instanceof Error ? err.message : String(err));
+            input.reportValidity();
+            input.value = doc.description;
+          }
+        };
+        input.addEventListener('change', persistDescription);
+        input.addEventListener('blur', persistDescription);
+        const modified = document.createElement('span');
+        modified.className = 'api-ref-modified';
+        modified.textContent = doc.modified ? new Date(doc.modified).toISOString() : '';
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'api-ref-delete';
+        del.textContent = 'x';
+        del.title = `Delete ${doc.name}`;
+        del.setAttribute('aria-label', `Delete ${doc.name}`);
+        del.addEventListener('click', () => {
+          if (confirm(`Delete vars.${doc.name}?`)) varsStore?.deleteValue(doc.name);
+        });
+        detail.append(value, input, modified, del);
+      } else {
+        detail.textContent = `${doc.value} — ${doc.description}`;
+      }
+    } else {
+      detail.textContent = doc.description;
+    }
     row.append(name, detail);
     return row;
   }
@@ -121,8 +191,9 @@ export function createApiReferencePanel(): HTMLElement {
 
   const variablesDrawer = buildDrawer(
     'Variables & constants',
-    SANDBOX_API_DOCS.filter((d) => d.kind === 'variable'),
+    variableDocs(),
     'No matching variables.',
+    VARIABLE_SORT_OPTIONS,
   );
   const functionsDrawer = buildDrawer(
     'Functions',
@@ -162,5 +233,39 @@ export function createApiReferencePanel(): HTMLElement {
   });
 
   el.append(variablesDrawer.section, splitter, functionsDrawer.section);
-  return el;
+
+  const unsubscribe = varsStore?.subscribe(() => {
+    variablesDrawer.docs = variableDocs();
+    renderDrawer(variablesDrawer);
+  });
+
+  return {
+    element: el,
+    destroy(): void {
+      unsubscribe?.();
+    },
+  };
+
+  function variableDocs(): readonly SandboxApiDoc[] {
+    const builtin = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable');
+    const player =
+      varsStore?.list().map((entry): SandboxApiDoc => ({
+        kind: 'variable',
+        name: entry.name,
+        description: entry.description,
+        source: 'player',
+        value: formatVarValue(entry.value),
+        modified: entry.modified,
+      })) ?? [];
+    return [...builtin, ...player];
+  }
+}
+
+function formatVarValue(value: unknown): string {
+  try {
+    const text = JSON.stringify(value);
+    return text === undefined ? String(value) : text;
+  } catch {
+    return String(value);
+  }
 }

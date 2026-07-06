@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mountSequenceScreen, type ScriptConsoleController, type ConsoleSink } from '../../../src/ui/sequence/index';
 import type { StorageLike } from '../../../src/net/storage';
 import { FORBIDDEN_API_NAMES } from '../../../src/sandbox/apiDocs';
+import type { SandboxVarEntry } from '../../../src/sandbox/vars';
 
 class FakeStorage implements StorageLike {
   map = new Map<string, string>();
@@ -46,6 +47,37 @@ function mountWithSink(root: HTMLElement, storage = new FakeStorage(), controlle
   return { storage, controller, sink: sink!, handle };
 }
 
+class FakeVarsStore {
+  entries: SandboxVarEntry[] = [];
+  descriptions: [string, string][] = [];
+  deletes: string[] = [];
+  private listeners: (() => void)[] = [];
+  list(): readonly SandboxVarEntry[] {
+    return this.entries;
+  }
+  setDescription(name: string, description: string): void {
+    this.descriptions.push([name, description]);
+    this.entries = this.entries.map((entry) =>
+      entry.name === name ? { ...entry, description } : entry,
+    );
+    this.emit();
+  }
+  deleteValue(name: string): void {
+    this.deletes.push(name);
+    this.entries = this.entries.filter((entry) => entry.name !== name);
+    this.emit();
+  }
+  subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
+    };
+  }
+  emit(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+}
+
 describe('mountSequenceScreen', () => {
   let root: HTMLElement;
   beforeEach(() => {
@@ -60,6 +92,7 @@ describe('mountSequenceScreen', () => {
     expect([...root.querySelectorAll('.script-list-item.seeded .name')].map((e) => e.textContent)).toEqual([
       'Calculator',
       'Candidates',
+      'Store & recall',
       'Trajectory Predictor',
     ]);
   });
@@ -355,9 +388,46 @@ describe('mountSequenceScreen', () => {
     varSort.value = 'name-desc';
     varSort.dispatchEvent(new Event('change'));
     const varNames = [...root.querySelectorAll('.api-ref-drawer')[0]!.querySelectorAll('.api-ref-name')].map((e) => e.textContent);
-    expect(varNames[0]).toBe('SHIP_MASS_KG');
+    expect(varNames[0]).toBe('vars');
     const fnNames = [...root.querySelectorAll('.api-ref-drawer')[1]!.querySelectorAll('.api-ref-name')].map((e) => e.textContent);
     expect(fnNames[0]!.startsWith('add(')).toBe(true);
+  });
+
+  it('renders player variables live with editable descriptions and confirmed delete', () => {
+    const vars = new FakeVarsStore();
+    vars.entries = [
+      { name: 'burnTime', value: 123, description: 'initial', modified: Date.parse('2026-01-01T00:00:00Z') },
+    ];
+    const controller = fakeController();
+    let sink: ConsoleSink | null = null;
+    mountSequenceScreen(root, {
+      storage: new FakeStorage(),
+      console: controller,
+      sandboxVars: vars,
+      bindConsole: (s) => {
+        sink = s;
+      },
+    });
+    expect(sink).not.toBeNull();
+    expect(root.querySelector('.api-ref-row.player')?.textContent).toContain('burnTime');
+    const input = root.querySelector('.api-ref-description-input') as HTMLInputElement;
+    expect(input.maxLength).toBe(500);
+    input.value = 'main burn';
+    input.dispatchEvent(new Event('change'));
+    expect(vars.descriptions).toEqual([['burnTime', 'main burn']]);
+
+    vars.entries = [
+      ...vars.entries,
+      { name: 'burnDv', value: { x: 0, y: 1, z: 0 }, description: '', modified: Date.parse('2026-01-02T00:00:00Z') },
+    ];
+    vars.emit();
+    expect([...root.querySelectorAll('.api-ref-row.player .api-ref-name')].map((e) => e.textContent)).toContain('burnDv');
+
+    const oldConfirm = window.confirm;
+    window.confirm = () => true;
+    (root.querySelector('[aria-label="Delete burnTime"]') as HTMLButtonElement).click();
+    window.confirm = oldConfirm;
+    expect(vars.deletes).toEqual(['burnTime']);
   });
 
   it('never lists forbidden §8.3 names in the drawers', () => {

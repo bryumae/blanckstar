@@ -67,7 +67,10 @@ interface Harness {
   unresponsiveLog: boolean[];
 }
 
-function makeHarness(watchdog?: WatchdogDeps): Harness {
+function makeHarness(
+  watchdog?: WatchdogDeps,
+  sandboxVars?: ConstructorParameters<typeof SandboxBridge>[0]['sandboxVars'],
+): Harness {
   const workers: FakeSandboxWorker[] = [];
   const sim = new FakeSim();
   const logs: string[] = [];
@@ -84,6 +87,7 @@ function makeHarness(watchdog?: WatchdogDeps): Harness {
     addSimListener: sim.add,
     removeSimListener: sim.remove,
     ephemeris: eph,
+    sandboxVars,
     onLog: (t) => logs.push(t),
     onScriptError: (message, line) => errors.push({ message, line }),
     onRunningChange: (r) => runningLog.push(r),
@@ -174,6 +178,23 @@ describe('SandboxBridge lifecycle', () => {
     h.bridge.run('x');
     h.currentWorker().emit({ type: 'log', text: 'hello' });
     expect(h.logs).toContain('hello');
+  });
+
+  it('terminates the run and reports an error when a persisted var write fails', () => {
+    const h = makeHarness(undefined, {
+      snapshot: () => ({ entries: [] }),
+      setValue: () => {
+        throw new Error('vars.big exceeds the store limit');
+      },
+      deleteValue: () => {},
+    });
+    h.bridge.run('vars.big = "x"');
+    const first = h.currentWorker();
+    first.emit({ type: 'varSet', name: 'big', value: 'x' });
+    expect(first.terminated).toBe(1);
+    expect(h.bridge.isRunning()).toBe(false);
+    expect(h.errors).toContainEqual({ message: 'vars.big exceeds the store limit', line: null });
+    expect(h.runningLog.at(-1)).toBe(false);
   });
 
   it('dispose unsubscribes from the sim and terminates the worker', () => {

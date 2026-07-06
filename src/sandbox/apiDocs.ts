@@ -31,7 +31,7 @@ export type SandboxVariableDoc = SandboxApiDocBase & {
   // Rendered value, e.g. "299792458". Numbers are the norm and carry no type
   // prefix; a future non-number variable spells its type out here.
   value: string;
-  updatedAt?: string; // unused until #31
+  modified?: number;
 };
 
 export type SandboxFunctionDoc = SandboxApiDocBase & {
@@ -85,6 +85,14 @@ export const SANDBOX_API_DOCS: readonly SandboxApiDoc[] = [
     '',
     'Async. Use await log.measurements(). Returns the full measurement log for this run.',
   ),
+  {
+    kind: 'variable',
+    name: 'vars',
+    description:
+      'Synchronous — no await. Persistent player workspace for this game run; assign vars.name = value, read vars.name, or delete vars.name.',
+    source: 'builtin',
+    value: '{...}',
+  },
 
   // ---- radio / sensors / telescope ----
   asyncFn(
@@ -177,7 +185,13 @@ export const SANDBOX_API_DOCS: readonly SandboxApiDoc[] = [
   constant('SHIP_MASS_KG', SHIP_MASS_KG, 'Ship wet mass, kg.'),
 ];
 
-export type SandboxApiSortKey = 'name' | 'description';
+export const SANDBOX_RESERVED_VAR_NAMES: ReadonlySet<string> = new Set([
+  ...SANDBOX_API_DOCS.map((doc) => doc.name),
+  ...SANDBOX_API_DOCS.map((doc) => doc.name.split('.')[0]!),
+  'vars',
+]);
+
+export type SandboxApiSortKey = 'name' | 'description' | 'modified';
 export type SandboxApiSortDirection = 'asc' | 'desc';
 
 // Case-insensitive substring filter over name + description. Empty (or
@@ -198,7 +212,10 @@ export function sortDocs<T extends SandboxApiDoc>(
   direction: SandboxApiSortDirection,
 ): T[] {
   const sign = direction === 'desc' ? -1 : 1;
-  return [...docs].sort(
-    (a, b) => sign * a[key].toLowerCase().localeCompare(b[key].toLowerCase()),
-  );
+  return [...docs].sort((a, b) => {
+    if (key === 'modified') {
+      return sign * ((a.kind === 'variable' ? (a.modified ?? 0) : 0) - (b.kind === 'variable' ? (b.modified ?? 0) : 0));
+    }
+    return sign * a[key].toLowerCase().localeCompare(b[key].toLowerCase());
+  });
 }

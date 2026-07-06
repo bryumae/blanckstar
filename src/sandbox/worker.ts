@@ -8,9 +8,11 @@
 // player script can no longer reach it.
 import { neutralizeGlobals } from './neutralize';
 import { buildGameApi, type CallBridge } from './api';
+import { SANDBOX_RESERVED_VAR_NAMES } from './apiDocs';
 import { compileScript, extractLine } from './runner';
 import type { SandboxCommand, SandboxOut, SandboxCallMethod } from './protocol';
 import type { EphemerisData } from '../core/ephemerisTypes';
+import type { SandboxVarValue, SandboxVarsSnapshot } from './vars';
 
 // Capture the bridge channel before neutralization removes it from `self`.
 const workerSelf = self as unknown as {
@@ -46,10 +48,14 @@ function rejectAllPending(reason: string): void {
   pending.clear();
 }
 
-async function runScript(source: string, ephemeris: EphemerisData): Promise<void> {
+async function runScript(source: string, ephemeris: EphemerisData, vars: SandboxVarsSnapshot): Promise<void> {
   const api = buildGameApi({
     callBridge,
     ephemeris,
+    varsSnapshot: vars,
+    reservedVarNames: SANDBOX_RESERVED_VAR_NAMES,
+    setVar: (name: string, value: SandboxVarValue) => send({ type: 'varSet', name, value }),
+    deleteVar: (name: string) => send({ type: 'varDelete', name }),
     log: (text: string) => send({ type: 'log', text }),
   });
 
@@ -97,7 +103,7 @@ listen('message', (event: MessageEvent<SandboxCommand>) => {
     }
     case 'run':
       rejectAllPending('script restarted');
-      void runScript(msg.source, msg.ephemeris);
+      void runScript(msg.source, msg.ephemeris, msg.vars);
       return;
   }
 });

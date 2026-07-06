@@ -24,6 +24,7 @@ import type {
   ShipStatus,
   ScheduledBurnInfo,
 } from './protocol';
+import type { SandboxVarValue, SandboxVarsSnapshot } from './vars';
 
 // The minimal worker surface the bridge drives — a Worker without the DOM types,
 // so tests supply a fake.
@@ -46,6 +47,11 @@ export interface BridgeDeps {
   readonly removeSimListener: (cb: (event: SimEvent) => void) => void;
   // Ephemeris handed to the worker at run start (for local predict()).
   readonly ephemeris: EphemerisData;
+  readonly sandboxVars?: {
+    snapshot(): SandboxVarsSnapshot;
+    setValue(name: string, value: SandboxVarValue): void;
+    deleteValue(name: string): void;
+  };
   // Per-scenario engine override, mirrored into ship.status() (§5.2).
   readonly maxAcceleration?: number;
   // Console/status callbacks for the UI (all optional).
@@ -157,7 +163,12 @@ export class SandboxBridge {
     this.running = true;
     this.deps.onRunningChange?.(true);
     this.startWatchdog();
-    this.worker.postMessage({ type: 'run', source, ephemeris: this.deps.ephemeris });
+    this.worker.postMessage({
+      type: 'run',
+      source,
+      ephemeris: this.deps.ephemeris,
+      vars: this.deps.sandboxVars?.snapshot() ?? { entries: [] },
+    });
   }
 
   // Stop the running script: terminate the worker (kills any runaway loop —
@@ -241,6 +252,20 @@ export class SandboxBridge {
       case 'heartbeat':
         this.onHeartbeat();
         return;
+      case 'varSet':
+        try {
+          this.deps.sandboxVars?.setValue(msg.name, msg.value);
+        } catch (err) {
+          this.failVarMutation(err);
+        }
+        return;
+      case 'varDelete':
+        try {
+          this.deps.sandboxVars?.deleteValue(msg.name);
+        } catch (err) {
+          this.failVarMutation(err);
+        }
+        return;
     }
   }
 
@@ -255,6 +280,12 @@ export class SandboxBridge {
       this.unresponsive = false;
       this.deps.onUnresponsive?.(false);
     }
+  }
+
+  private failVarMutation(err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err);
+    this.stop();
+    this.deps.onScriptError?.(message, null);
   }
 
   private reply(callId: number, ok: boolean, value?: unknown, error?: string): void {

@@ -29,7 +29,12 @@ function collectApiNames(api: Record<string, unknown>): Set<string> {
       return;
     }
     if (value !== null && typeof value === 'object') {
-      for (const [key, v] of Object.entries(value)) visit(v, `${path}.${key}`);
+      const entries = Object.entries(value);
+      if (entries.length === 0) {
+        names.add(path);
+        return;
+      }
+      for (const [key, v] of entries) visit(v, `${path}.${key}`);
       return;
     }
     names.add(path);
@@ -99,7 +104,12 @@ describe('SANDBOX_API_DOCS registry', () => {
       expect(String(Number(value))).toBe(value);
     }
     const variables = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable').map((d) => d.name);
-    expect(variables.sort()).toEqual([...CONSTANT_NAMES].sort());
+    expect(variables.sort()).toEqual([...CONSTANT_NAMES, 'vars'].sort());
+    expect(SANDBOX_API_DOCS.find((d) => d.name === 'vars')).toMatchObject({
+      kind: 'variable',
+      source: 'builtin',
+      value: '{...}',
+    });
   });
 
   it('marks async descriptions with await usage and sync ones as synchronous', () => {
@@ -156,6 +166,16 @@ describe('sortDocs', () => {
   it('sorts by description in both directions', () => {
     expect(sortDocs(sample, 'description', 'asc').map((d) => d.name)).toEqual(['gamma', 'Alpha', 'beta']);
     expect(sortDocs(sample, 'description', 'desc').map((d) => d.name)).toEqual(['beta', 'Alpha', 'gamma']);
+  });
+
+  it('sorts variables by modified time in both directions', () => {
+    const withModified: SandboxApiDoc[] = [
+      { kind: 'variable', name: 'older', description: 'older', source: 'player', value: '1', modified: 10 },
+      { kind: 'variable', name: 'builtin', description: 'builtin', source: 'builtin', value: '2' },
+      { kind: 'variable', name: 'newer', description: 'newer', source: 'player', value: '3', modified: 20 },
+    ];
+    expect(sortDocs(withModified, 'modified', 'desc').map((d) => d.name)).toEqual(['newer', 'older', 'builtin']);
+    expect(sortDocs(withModified, 'modified', 'asc').map((d) => d.name)).toEqual(['builtin', 'older', 'newer']);
   });
 
   it('is stable and never mutates its input', () => {

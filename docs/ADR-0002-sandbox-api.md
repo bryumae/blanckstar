@@ -235,3 +235,49 @@ hand-maintained comment copy of the README section) is retired. The forbidden
 absence tests assert against one list. README §Scripting API remains a
 hand-written duplicate for now — generating or drift-testing it against the
 registry is tracked as a follow-up.
+
+## Addendum (issue #31) — persisted sandbox variables
+
+The sandbox now injects `vars`, a player-owned persistent workspace for values
+shared across scripts in the same game run. `vars` is a plain JavaScript
+`Proxy`: `vars.burnTime = ...` writes, `vars.burnTime` reads synchronously, and
+`delete vars.burnTime` removes the value. Top-level locals remain script-local;
+there is still no source transform or custom language.
+
+`vars` accepts only JSON-safe values: null, booleans, finite numbers, strings,
+arrays, and plain objects of the same. It rejects `NaN`/Infinity, functions,
+symbols, bigint, undefined, class instances, dates/maps/sets/typed arrays, and
+cycles. Built-in API names are reserved (`vars.C`, `vars.vec`, `vars.vars`,
+etc.) so player variables never shadow documented runtime surface.
+
+Writes and deletes are fire-and-forget worker messages (`varSet`/`varDelete`)
+with a worker-local write-through cache, because JavaScript proxy setters are
+synchronous and cannot await a bridge acknowledgement. On natural completion,
+FIFO worker-message ordering guarantees every posted variable mutation reaches
+the bridge before `done`/`scriptError`, so normal script completion is lossless.
+Stop/terminate remains best-effort: any mutation already dispatched to the
+bridge is persisted, while one still in flight at the termination instant may be
+lost.
+
+The main thread owns durability and metadata. The store is injected through the
+same `StorageLike` seam as other browser persistence, stamps `modified` time in
+the bridge/main-thread side, caps the total serialized store at 64 KB, and caps
+descriptions at 500 characters. The Script Console variables drawer merges
+built-in constants with live player variables; player rows have editable
+descriptions and confirmed delete, while built-in documentation remains
+read-only.
+
+Variable storage is namespaced by stable current-run `gameId`, not by scenario
+id: `blanckstar.sandboxVars.v1:<gameId>`. Scenario id is metadata; `gameId` is
+the boundary between attempts/save slots, so two attempts of `close-call` do not
+share solved burn variables accidentally. Until full save/load (#38) exists,
+the app persists current-run metadata under `blanckstar.currentRun.v1` and
+reuses that `gameId` across refreshes for the same active scenario; reset/retry
+creates a fresh `gameId`.
+
+For the future save/load work in #38, `vars` is player workspace state, not
+authoritative game progress. The sim snapshot remains the owner of hidden truth
+such as ship position/velocity, burn-manager internals, measurement counters,
+outcome, and interrupt state. Save JSON should include sandbox variables under
+`playerWorkspace.sandboxVars`, restore them on load/continue, and reset them on
+New Game unless the player explicitly imports/copies them.

@@ -14,6 +14,7 @@ import {
   type ConsoleOutputLine,
 } from './workspaceStore';
 import { createApiReferencePanel } from './apiReference';
+import type { ApiReferenceVarsStore } from './apiReference';
 import { attachSplitterDrag } from './splitter';
 import './sequence.css';
 
@@ -39,6 +40,7 @@ export interface SequenceScreenDeps {
   readonly storage: StorageLike;
   readonly console: ScriptConsoleController;
   readonly bindConsole: (sink: ConsoleSink) => void;
+  readonly sandboxVars?: ApiReferenceVarsStore;
 }
 
 // The console output sink the screen exposes to its host (the bridge writes to it).
@@ -186,8 +188,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const linesEl = document.createElement('div');
   linesEl.className = 'script-console-lines';
   outputView.append(outHeader, linesEl);
-  const apiReference = createApiReferencePanel();
-  outCol.append(outputView, apiReference);
+  const apiReference = createApiReferencePanel(deps.sandboxVars);
+  outCol.append(outputView, apiReference.element);
 
   body.append(editorCol, splitter, outCol);
   work.append(sheetTabs, body);
@@ -299,7 +301,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   function renderLowerPane(): void {
     const sheet = currentSheet();
     outputView.hidden = !sheet.outputVisible;
-    apiReference.hidden = sheet.outputVisible;
+    apiReference.element.hidden = sheet.outputVisible;
     // The header Output button re-opens the pane; grayed while already open.
     outputBtn.disabled = sheet.outputVisible;
     // Render lines even while hidden so the pane never shows a stale sheet.
@@ -407,7 +409,9 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
           ? 'Calculator'
           : seed.kind === 'candidates'
             ? 'Candidates'
-            : 'Trajectory Predictor';
+            : seed.kind === 'predictor'
+              ? 'Trajectory Predictor'
+              : 'Store & recall';
       item.appendChild(name);
       item.addEventListener('click', () => selectSheet(seed.id));
       railItems.appendChild(item);
@@ -574,6 +578,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   return {
     destroy(): void {
+      apiReference.destroy();
       root.textContent = '';
       root.classList.remove('sequence-screen', 'script-console');
     },

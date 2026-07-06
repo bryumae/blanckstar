@@ -13,8 +13,11 @@ import { mountMeasurementLogScreen } from './ui/measurementLog';
 import { createCandidateStore } from './ui/candidateStore';
 import { createMeasurementMirror } from './ui/data/measurementMirror';
 import { SandboxBridge } from './sandbox/bridge';
+import { SANDBOX_RESERVED_VAR_NAMES } from './sandbox/apiDocs';
 import { isDebugEnabled } from './ui/debug/gate';
 import { loadEphemeris, loadStarCatalog } from './net/loadEphemeris';
+import { createCurrentRun, ensureCurrentRun, readCurrentRun } from './net/currentRun';
+import { SandboxVarsStore } from './net/sandboxVars';
 import { SEEDS } from './sim/seeds';
 import type { SimCommand, SimEvent, StateEvent } from './sim/messages';
 import type { ScenarioSeed } from './sim/types';
@@ -61,8 +64,31 @@ async function main(): Promise<void> {
 
   // ---- shared UI stores ----
   const candidates = createCandidateStore(localStorage);
+  const sandboxVars = new SandboxVarsStore(localStorage, { reservedNames: SANDBOX_RESERVED_VAR_NAMES });
+  const initialRun = readCurrentRun(localStorage);
+  if (initialRun) sandboxVars.setNamespace(initialRun.gameId);
   const measurements = createMeasurementMirror();
   let simEpoch = 0;
+  let currentSeedId: string | null = initialRun?.scenarioId ?? null;
+  let bridge: SandboxBridge | null = null;
+  const createGameId = (): string =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `game-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const setRunNamespace = (seedId: string, reuseExisting: boolean): void => {
+    const run = reuseExisting
+      ? ensureCurrentRun(localStorage, seedId, createGameId)
+      : createCurrentRun(localStorage, seedId, createGameId);
+    currentSeedId = seedId;
+    sandboxVars.setNamespace(run.gameId);
+  };
+  const sendFromUi = (command: SimCommand): void => {
+    if (command.type === 'reset' && currentSeedId) {
+      bridge?.stop();
+      setRunNamespace(currentSeedId, false);
+    }
+    post(command);
+  };
   addSimListener((e) => {
     if (e.type === 'measurementAdded') measurements.add(e.measurement);
     else if (e.type === 'ready') {
@@ -78,10 +104,11 @@ async function main(): Promise<void> {
     seeds: SEEDS,
     getLastSeedId: () => localStorage.getItem(LAST_SEED_KEY),
     setLastSeedId: (id) => localStorage.setItem(LAST_SEED_KEY, id),
-    send: post,
+    send: sendFromUi,
     addSimListener,
     removeSimListener,
     onInit: (seed: ScenarioSeed) => {
+      setRunNamespace(seed.id, true);
       currentMaxAcceleration = seed.maxAcceleration;
       post({ type: 'init', ephemeris, seed });
     },
@@ -147,13 +174,14 @@ async function main(): Promise<void> {
 
   // ---- sandbox bridge + sequence screen ----
   let sink: ConsoleSink | null = null;
-  const bridge = new SandboxBridge({
+  bridge = new SandboxBridge({
     createSandboxWorker: () =>
       new Worker(new URL('./sandbox/worker.ts', import.meta.url), { type: 'module' }),
     postToSim: post,
     addSimListener,
     removeSimListener,
     ephemeris,
+    sandboxVars,
     get maxAcceleration() {
       return currentMaxAcceleration;
     },
@@ -173,6 +201,7 @@ async function main(): Promise<void> {
   mountSequenceScreen(shell.screenRoot('sequence'), {
     storage: localStorage,
     console: bridge,
+    sandboxVars,
     bindConsole: (s) => {
       sink = s;
     },

@@ -72,3 +72,30 @@ test('forbidden API names are absent and ship.burn is documented as awaited', as
   const burnRow = page.locator('.api-ref-row', { hasText: 'ship.burn(' });
   await expect(burnRow).toContainText('await');
 });
+
+test('vars persist for the current game run and can be described and deleted in the drawer', async ({ page }) => {
+  await openScriptConsole(page);
+
+  await page.locator('.script-textarea').fill('vars.burnTime = 123;\nlog("stored", vars.burnTime);');
+  await page.locator('.script-btn.run').click();
+  await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Close console output' }).click();
+  const row = page.locator('.api-ref-row.player', { hasText: 'burnTime' });
+  await expect(row).toContainText('123');
+  await row.getByLabel('Description for burnTime').fill('main burn');
+  await row.getByLabel('Description for burnTime').blur();
+
+  await page.reload();
+  await startMission(page, /Close call/);
+  await page.getByRole('button', { name: /Script Console/ }).click();
+  await expect(page.locator('.api-ref-row.player', { hasText: 'burnTime' }).getByLabel('Description for burnTime')).toHaveValue('main burn');
+
+  await page.locator('.script-textarea').fill('log("saved", vars.burnTime);');
+  await page.locator('.script-btn.run').click();
+  await expect(page.getByText('saved 123')).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Close console output' }).click();
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByLabel('Delete burnTime').click();
+  await expect(page.locator('.api-ref-row.player', { hasText: 'burnTime' })).toHaveCount(0);
+});

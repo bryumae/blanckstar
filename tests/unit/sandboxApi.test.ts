@@ -15,6 +15,7 @@ describe('buildGameApi surface (§8.2 completeness)', () => {
     const { api } = build();
     for (const name of [
       'time', 'wait', 'log', 'radio', 'sensors', 'telescope', 'ephemeris',
+      'vars',
       'vec', 'add', 'sub', 'mul', 'dot', 'cross', 'norm', 'normalize', 'angleBetween',
       'ship', 'predict',
       'C', 'MU_SUN', 'MU_EARTH', 'MU_MOON', 'R_EARTH', 'R_MOON', 'R_SOI_EARTH', 'AU', 'SHIP_MASS_KG',
@@ -66,6 +67,25 @@ describe('buildGameApi surface (§8.2 completeness)', () => {
     const { api, log } = build();
     (api.log as (...v: unknown[]) => void)('range', { x: 1 });
     expect(log).toHaveBeenCalledWith('range {"x":1}');
+  });
+
+  it('vars writes through synchronously via the injected variable seam', () => {
+    const sets: unknown[] = [];
+    const api = buildGameApi({
+      callBridge: vi.fn(async () => undefined),
+      ephemeris: eph,
+      log: vi.fn(),
+      reservedVarNames: new Set(['C', 'vars']),
+      varsSnapshot: { entries: [] },
+      setVar: (name, value) => sets.push([name, value]),
+    });
+    const vars = api.vars as Record<string, unknown>;
+    vars.burnTime = 123;
+    expect(vars.burnTime).toBe(123);
+    expect(sets).toEqual([['burnTime', 123]]);
+    expect(() => {
+      vars.C = 5;
+    }).toThrow(/built-in/);
   });
 
   it('predict() runs locally (same engine) with no bridge round-trip', () => {
