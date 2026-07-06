@@ -1,7 +1,7 @@
 import type { StorageLike } from '../../net/storage';
 import { readJson, writeJson } from '../../net/storage';
 
-export type CodeSheetKind = 'user-script' | 'calculator' | 'candidates' | 'predictor';
+export type CodeSheetKind = 'user-script' | 'calculator' | 'candidates' | 'predictor' | 'store-recall';
 export type CodeSheetStatus = 'idle' | 'running' | 'unresponsive' | 'error';
 export type ConsoleLineKind = 'log' | 'event' | 'ok' | 'error';
 
@@ -65,6 +65,22 @@ log('measurements:', rows.length);
 for (const m of rows.slice(-5)) {
   log(m.kind, 't=', m.t.toFixed(0), m.data);
 }
+`,
+  },
+  {
+    id: 'seed:store-recall',
+    kind: 'store-recall',
+    name: 'store-recall.js',
+    status: 'idle',
+    outputLines: [],
+    outputVisible: false,
+    source: `// Store & recall: values in vars survive reloads for this game run.
+vars.burnTime = await time.now() + 3600;
+vars.burnDv = vec(0, 12.4, 0);
+
+log('burn time:', vars.burnTime);
+log('burn dv magnitude:', norm(vars.burnDv).toFixed(3));
+delete vars.burnDv;
 `,
   },
   {

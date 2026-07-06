@@ -14,6 +14,12 @@ import type { Vector3 } from '../core/vector3';
 import { vec3, add, sub, mul, dot, cross, norm, normalize, angleBetween } from '../core/vector3';
 import type { EphemerisData } from '../core/ephemerisTypes';
 import {
+  SANDBOX_VAR_TOTAL_SIZE_LIMIT,
+  createSandboxVarsProxy,
+  type SandboxVarValue,
+  type SandboxVarsSnapshot,
+} from './vars';
+import {
   C,
   MU_SUN,
   MU_EARTH,
@@ -39,6 +45,10 @@ export interface BuildApiDeps {
   readonly callBridge: CallBridge;
   readonly ephemeris: EphemerisData;
   readonly log: (text: string) => void;
+  readonly varsSnapshot?: SandboxVarsSnapshot;
+  readonly reservedVarNames?: ReadonlySet<string>;
+  readonly setVar?: (name: string, value: SandboxVarValue) => void;
+  readonly deleteVar?: (name: string) => void;
   readonly maxAcceleration?: number;
 }
 
@@ -75,6 +85,15 @@ export function buildGameApi(deps: BuildApiDeps): GameApi {
 
     // ---- logging ----
     log: logFn,
+
+    // ---- persisted player variables ----
+    vars: createSandboxVarsProxy({
+      snapshot: deps.varsSnapshot ?? { entries: [] },
+      reservedNames: deps.reservedVarNames ?? new Set(),
+      totalSizeLimitBytes: SANDBOX_VAR_TOTAL_SIZE_LIMIT,
+      setVar: deps.setVar ?? (() => {}),
+      deleteVar: deps.deleteVar ?? (() => {}),
+    }),
 
     // ---- radio ----
     radio: {

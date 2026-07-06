@@ -10,6 +10,7 @@
 // never round-trip.
 import type { EphemerisData } from '../core/ephemerisTypes';
 import type { Vector3 } from '../core/vector3';
+import type { SandboxVarValue, SandboxVarsSnapshot } from './vars';
 
 // ---- bridge -> sandbox worker ----
 
@@ -19,6 +20,7 @@ export interface RunCommand {
   readonly type: 'run';
   readonly source: string;
   readonly ephemeris: EphemerisData;
+  readonly vars: SandboxVarsSnapshot;
 }
 
 // Resolve/reject a pending proxied API call by its id.
@@ -94,7 +96,25 @@ export interface HeartbeatOut {
   readonly nonce: number;
 }
 
-export type SandboxOut = CallOut | LogOut | DoneOut | ScriptErrorOut | HeartbeatOut;
+export interface VarSetOut {
+  readonly type: 'varSet';
+  readonly name: string;
+  readonly value: SandboxVarValue;
+}
+
+export interface VarDeleteOut {
+  readonly type: 'varDelete';
+  readonly name: string;
+}
+
+export type SandboxOut =
+  | CallOut
+  | LogOut
+  | DoneOut
+  | ScriptErrorOut
+  | HeartbeatOut
+  | VarSetOut
+  | VarDeleteOut;
 
 // ---- shared value shapes carried over the wire ----
 

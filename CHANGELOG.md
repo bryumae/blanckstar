@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- Closes #31: adds persisted sandbox `vars` as the Script Console's
+  player-owned "backup computer" memory. Scripts can assign/read/delete
+  JSON-safe values with `vars.name`, with synchronous read-after-write, finite
+  number/plain-object validation, built-in API name collision checks, a 64 KB
+  per-run store cap, and main-thread `modified` timestamps. Variables are
+  stored through the injected storage seam under a stable current-run
+  `gameId` (`blanckstar.sandboxVars.v1:<gameId>`), not the scenario id, so
+  refreshes keep the active run's values while reset/retry starts a fresh
+  variable namespace. The variables drawer now merges built-in constants with
+  live player variables, supports editable player descriptions, confirmed
+  delete, and modified-time sorting; a new `store-recall.js` template teaches
+  the workflow. ADR-0002 records the `vars` design, Stop best-effort
+  durability, and the #38 save/load boundary: `vars` are player workspace
+  state to include in save JSON, not authoritative sim progress.
+
 - Closes #30: the Script Console's per-sheet Console Output panel is now
   closable; when a sheet's output is closed (or it has none) the lower pane
   shows two read-only API reference drawers side by side — *Variables &

@@ -534,8 +534,48 @@
 .api-ref-detail {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   overflow-wrap: anywhere;
   color: var(--text-tertiary);
+}
+
+.api-ref-value {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.api-ref-description-input {
+  flex: 1 1 150px;
+  min-width: 80px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-control);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.api-ref-modified {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.api-ref-delete {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.api-ref-delete:hover {
+  color: var(--status-danger);
 }
 
 .api-ref-empty {
