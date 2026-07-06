@@ -1,8 +1,6 @@
-// Phase 8 barrel (mvp0_spec.md §7.6, §7.7): Calculator / Candidates /
-// Trajectory Predictor tabs for the Sequence & Calculation screen. Registers
-// through `registerSequenceTab` from the sibling `../index` seam — the
-// orchestrator passes `createSequenceTabs(deps)` as `SequenceScreenDeps.extraTabs`
-// without editing src/ui/sequence/index.ts.
+// Detached Phase 8 GUI panels (mvp0_spec.md §7.6, §7.7). Issue #27 moved the
+// live Script Console to runnable code sheets, but these mounts and pure helpers
+// remain covered by their existing tests until a later cleanup removes them.
 import type { EphemerisData } from '../../../core/ephemerisTypes';
 import type { StorageLike } from '../../../net/storage';
 import type { CandidateStore } from '../../candidateStore';

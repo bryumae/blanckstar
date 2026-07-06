@@ -10,7 +10,6 @@ import type { ConsoleSink } from './ui/sequence';
 import { mountDataScreen } from './ui/data';
 import { mountEphemerisScreen } from './ui/ephemeris';
 import { mountMeasurementLogScreen } from './ui/measurementLog';
-import { createSequenceTabs } from './ui/sequence/tabs';
 import { createCandidateStore } from './ui/candidateStore';
 import { createMeasurementMirror } from './ui/data/measurementMirror';
 import { SandboxBridge } from './sandbox/bridge';
@@ -177,12 +176,6 @@ async function main(): Promise<void> {
     bindConsole: (s) => {
       sink = s;
     },
-    extraTabs: createSequenceTabs({
-      ephemeris,
-      storage: localStorage,
-      candidates,
-      getMeasurements: () => measurements.all(),
-    }),
   });
 
   // ---- debug overlay (dev builds + ?debug=1 only; dynamic import so it

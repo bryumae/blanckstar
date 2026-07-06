@@ -119,17 +119,36 @@ not the mirror; this is accepted for MVP0 because the page lifetime contains the
 sim lifetime and a fresh page starts empty. If mid-run reset-and-replay is added
 later, the bridge must clear the mirror on the sim's `ready`/`reset`.
 
-### Sequence console UI — plain DOM, tab registration seam
+## Addendum (Issue #27) — Script Console code-sheet workspace
 
-`mountSequenceScreen(root, deps)` renders the tab bar (Script Console now;
-Calculator / Candidates / Trajectory Predictor as placeholder panels with
-`data-tab` attributes). Later phases add tabs through `deps.extraTabs`
-(`registerSequenceTab(id, label, mount)`) rather than editing this file. The
-console depends only on a `ScriptConsoleController` interface (run/stop/
-isRunning) and a `ConsoleSink` it hands back via `deps.bindConsole` — not on the
-bridge class — so it stays DOM-only and testable. Scripts persist (multiple
-named, create/rename/delete, last-open) through the injected `StorageLike` seam
-(`ScriptStore`).
+The Sequence & Calc screen is now the Script Console. Its tabs are open runnable
+code sheets, not internal feature modes. The left rail remains the browser for
+persisted user scripts and seeded templates (`Calculator`, `Candidates`,
+`Trajectory Predictor`); selecting a rail item opens or focuses a sheet tab.
+
+Workspace state is stored through the same injected `StorageLike` seam as named
+scripts, but under a new versioned key so existing saved scripts remain intact.
+It persists the open sheet ids, active sheet id, seeded-sheet source edits,
+per-sheet output lines/status, and the top/bottom editor/output split ratio. User-script
+source and names continue to use the existing script storage key, with the
+workspace adding sheet-level output and tab state around them.
+
+The sandbox bridge still runs only one script at a time. Console sink callbacks
+append to the sheet that started the current run, so async log/error/sim-event
+echoes do not drift into whichever sheet the player happens to view later.
+Calculator/Candidates/Predictor are seeded JavaScript sheets rather than GUI
+panels in the console flow; their old DOM modules are detached from app wiring.
+
+### Sequence console UI — plain DOM, sheet workspace
+
+`mountSequenceScreen(root, deps)` renders the Script Console sheet workspace.
+The left rail lists named user scripts plus seeded template sheets; the tab row
+lists currently open runnable sheets. The console depends only on a
+`ScriptConsoleController` interface (run/stop/isRunning) and a `ConsoleSink` it
+hands back via `deps.bindConsole` — not on the bridge class — so it stays
+DOM-only and testable. Named scripts persist through `ScriptStore`; open sheets,
+active sheet, per-sheet output, seeded source edits, and top/bottom split size persist
+through `ScriptConsoleWorkspaceStore`, both over injected `StorageLike`.
 
 ## Consequences
 

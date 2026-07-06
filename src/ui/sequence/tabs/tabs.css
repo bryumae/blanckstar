@@ -1,7 +1,5 @@
-/* Calculator / Candidates / Trajectory Predictor tabs (mvp0_spec.md §7.6, §7.7).
- * Vanilla CSS, no framework (repo rule 5) — hand-ported from
- * docs/design/mission-interface-template.html's Sequence & Calculation
- * sections, styled via the shared tokens in src/ui/styles.css. */
+/* Detached Calculator / Candidates / Trajectory Predictor GUI panels
+ * (mvp0_spec.md §7.6, §7.7). Vanilla CSS, no framework (repo rule 5). */
 @import '../../styles.css';
 
 .calc-tab {

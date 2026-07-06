@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Fixes #27: renames Sequence & Calc to Script Console and replaces the old
+  Calculator/Candidates/Trajectory Predictor mode tabs with open runnable
+  code-sheet tabs. The left rail now opens persisted user scripts or seeded
+  template sheets, each sheet keeps its own editor source, output, and status
+  across reloads, and the editor/output area uses a persisted draggable
+  horizontal split.
+
 - Closes #17: lifts the shared "gravity + thrust + tiered-timestep RK4
   advance" wiring (`gravitatingBodiesAt`/`makeAcceleration`/`advance`,
   formerly `src/sim/physics.ts`) and the scheduled-burn helpers

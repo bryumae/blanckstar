@@ -1,82 +1,18 @@
-/* Sequence & Calculation screen (mvp0_spec.md §7.6, §7.7, §7.9). Vanilla CSS,
+/* Script Console screen (mvp0_spec.md §7.9). Vanilla CSS,
  * no framework (repo rule 5) — hand-ported from
- * docs/design/mission-interface-template.html's Sequence section, styled via the
+ * docs/design/mission-interface-template.html's console section, styled via the
  * shared tokens in src/ui/styles.css. */
 @import '../styles.css';
 
 .sequence-screen {
   flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 0;
   font-family: var(--font-ui);
   color: var(--text-primary);
 }
 
-/* ---- tab bar ---- */
-.sequence-tabs {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 2px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-panel-header);
-}
-
-.sequence-tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  font-family: var(--font-ui);
-  font-size: var(--fs-body);
-  padding: 11px 14px;
-  cursor: pointer;
-}
-
-.sequence-tab.is-active {
-  color: var(--text-primary);
-  border-bottom-color: var(--accent);
-}
-
-.sequence-tab:hover:not(.is-active) {
-  color: var(--text-tertiary);
-}
-
-.sequence-panels {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-}
-
-/* Tab content stylesheets (tabs.css's .calc-tab/.cand-tab/.pred-tab, and
- * .script-console below) each set their own `display` on the panel's root
- * class — since those can load in any order relative to this file,
- * `.sequence-panel:not(.is-active)` must win regardless of import order (same
- * fix as `.shell-screen:not(.is-active)` in shell.css). A single
- * class-selector `display: none` isn't specific enough to beat a
- * same-specificity `display: flex/grid` declared later. */
-.sequence-panel {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-
-.sequence-panel:not(.is-active) {
-  display: none !important;
-}
-
-.sequence-placeholder {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--fs-body);
-}
-
-/* ---- Script Console tab ---- */
 .script-console {
   flex: 1 1 auto;
   display: flex;
@@ -110,6 +46,15 @@
   flex: 1 1 auto;
   overflow: auto;
   min-height: 0;
+}
+
+.script-list-section {
+  padding: 10px 12px 6px;
+  color: var(--text-faint);
+  font-size: 9px;
+  letter-spacing: var(--ls-caps);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-row);
 }
 
 .script-list-item {
@@ -150,12 +95,76 @@
   color: var(--status-danger);
 }
 
-/* editor column */
-.script-editor-col {
-  flex: 1 1 55%;
+.script-workspace {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-primary);
+  min-width: 0;
+  min-height: 0;
+}
+
+.sheet-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-panel-header);
+  overflow-x: auto;
+}
+
+.sheet-tab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 210px;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  cursor: pointer;
+}
+
+.sheet-tab span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-tab.is-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  background: var(--bg-active);
+}
+
+.sheet-tab-close {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.sheet-tab-close:hover {
+  color: var(--status-danger);
+}
+
+.script-workspace-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* editor pane */
+.script-editor-col {
+  flex: 0 0 56%;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -276,20 +285,27 @@
   overflow: auto;
 }
 
-/* console output column */
-/* Closed by default so the editor gets the full width — opens when Run is
- * pressed, or stays closed until the player wants it (repo issue: console
- * output should not eat into code editing space unless actually running). */
+/* draggable editor/output splitter */
+.script-splitter {
+  flex: 0 0 7px;
+  cursor: row-resize;
+  background: var(--border-primary);
+  border-top: 3px solid var(--bg-body);
+  border-bottom: 3px solid var(--bg-body);
+}
+
+.script-splitter:hover,
+.script-workspace-body.is-resizing .script-splitter {
+  background: var(--accent);
+}
+
+/* console output pane */
 .script-console-out {
-  display: none;
+  flex: 1 1 44%;
+  display: flex;
   flex-direction: column;
   min-width: 0;
   background: var(--bg-viewport);
-}
-
-.script-console-out.is-open {
-  display: flex;
-  flex: 1 1 45%;
 }
 
 .script-console-header {
