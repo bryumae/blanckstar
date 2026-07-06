@@ -488,7 +488,8 @@
   border-right: 3px solid var(--bg-viewport);
 }
 
-.api-ref-splitter:hover {
+.api-ref-splitter:hover,
+.api-ref-drawers.is-resizing .api-ref-splitter {
   background: var(--accent);
 }
 

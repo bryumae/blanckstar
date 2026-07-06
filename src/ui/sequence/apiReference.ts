@@ -2,6 +2,7 @@
 // Console's lower pane whenever a sheet's console output is closed. Plain
 // DOM/CSS, no framework (repo rule 5); all data comes from the central
 // registry in src/sandbox/apiDocs.ts.
+import { attachSplitterDrag } from './splitter';
 import {
   SANDBOX_API_DOCS,
   filterDocs,
@@ -98,28 +99,31 @@ export function createApiReferencePanel(): ApiReferencePanel {
   const variablesDrawer = buildDrawer('Variables & constants', variables, 'No matching variables.');
   const functionsDrawer = buildDrawer('Functions', functions, 'No matching functions.');
 
-  // Draggable divider between the two drawers — same interaction as the
-  // editor/output splitter, but vertical and session-local (not persisted).
+  // Draggable divider between the two drawers — shares the drag behavior of
+  // the editor/output splitter, but horizontal and session-local (not
+  // persisted).
   const splitter = document.createElement('div');
   splitter.className = 'api-ref-splitter';
   splitter.role = 'separator';
   splitter.title = 'Resize drawers';
-  splitter.addEventListener('mousedown', (event) => {
-    event.preventDefault();
-    const onMove = (move: MouseEvent): void => {
-      const rect = drawers.getBoundingClientRect();
-      if (rect.width <= 0) return;
-      const ratio = Math.min(0.8, Math.max(0.2, (move.clientX - rect.left) / rect.width));
-      const pct = `${(ratio * 100).toFixed(2)}%`;
-      variablesDrawer.section.style.flexBasis = pct;
-      functionsDrawer.section.style.flexBasis = `calc(100% - ${pct})`;
-    };
-    const onUp = (): void => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+  attachSplitterDrag(splitter, {
+    axis: 'x',
+    container: drawers,
+    resizeTarget: drawers,
+    min: 0.2,
+    max: 0.8,
+    onRatio: (ratio) => {
+      // Fix the left drawer at the ratio and let the right one absorb the
+      // remainder — the splitter's own width then can't skew the split.
+      const left = variablesDrawer.section.style;
+      left.flexGrow = '0';
+      left.flexShrink = '0';
+      left.flexBasis = `${(ratio * 100).toFixed(2)}%`;
+      const right = functionsDrawer.section.style;
+      right.flexGrow = '1';
+      right.flexShrink = '1';
+      right.flexBasis = 'auto';
+    },
   });
 
   drawers.append(variablesDrawer.section, splitter, functionsDrawer.section);

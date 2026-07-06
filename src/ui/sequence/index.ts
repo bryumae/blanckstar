@@ -14,6 +14,7 @@ import {
   type ConsoleOutputLine,
 } from './workspaceStore';
 import { createApiReferencePanel } from './apiReference';
+import { attachSplitterDrag } from './splitter';
 import './sequence.css';
 
 export type { ConsoleLineKind } from './workspaceStore';
@@ -501,23 +502,17 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     deps.console.stop();
   });
 
-  splitter.addEventListener('mousedown', (event) => {
-    event.preventDefault();
-    body.classList.add('is-resizing');
-    const onMove = (move: MouseEvent): void => {
-      const rect = body.getBoundingClientRect();
-      const height = rect.height || body.clientHeight;
-      if (height <= 0) return;
-      workspace.setSplitRatio((move.clientY - rect.top) / height);
+  attachSplitterDrag(splitter, {
+    axis: 'y',
+    container: body,
+    resizeTarget: body,
+    // The store's clampSplitRatio owns the real bounds.
+    min: 0,
+    max: 1,
+    onRatio: (ratio) => {
+      workspace.setSplitRatio(ratio);
       applySplit();
-    };
-    const onUp = (): void => {
-      body.classList.remove('is-resizing');
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    },
   });
 
   const sink: ConsoleSink = {

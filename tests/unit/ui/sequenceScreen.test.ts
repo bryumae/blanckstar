@@ -157,7 +157,7 @@ describe('mountSequenceScreen', () => {
     const body = root.querySelector('.script-workspace-body') as HTMLElement;
     body.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 400, right: 1000, bottom: 400, x: 0, y: 0, toJSON: () => '' });
     (root.querySelector('.script-splitter') as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { clientY: 200 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 288 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 288, buttons: 1 }));
     window.dispatchEvent(new MouseEvent('mouseup'));
     handle.destroy();
 
@@ -178,7 +178,7 @@ describe('mountSequenceScreen', () => {
     const body = root.querySelector('.script-workspace-body') as HTMLElement;
     body.getBoundingClientRect = () => ({ left: 100, top: 50, width: 1000, height: 400, right: 1100, bottom: 450, x: 100, y: 50, toJSON: () => '' });
     (root.querySelector('.script-splitter') as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { clientY: 200 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 390 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 390, buttons: 1 }));
     window.dispatchEvent(new MouseEvent('mouseup'));
     expect((root.querySelector('.script-editor-col') as HTMLElement).style.flexBasis).toBe('75.00%');
     handle.destroy();
@@ -320,17 +320,25 @@ describe('mountSequenceScreen', () => {
     const sections = root.querySelectorAll('.api-ref-drawer');
 
     splitter.dispatchEvent(new MouseEvent('mousedown', { clientX: 600 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 400 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 400, buttons: 1 }));
+    // Left drawer is pinned to the ratio; the right one absorbs the rest.
     expect((sections[0] as HTMLElement).style.flexBasis).toBe('30.00%');
-    expect((sections[1] as HTMLElement).style.flexBasis).toBe('calc(100% - 30.00%)');
+    expect((sections[1] as HTMLElement).style.flexBasis).toBe('auto');
 
     // Clamped at 20% / 80%.
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0, buttons: 1 }));
     expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
     window.dispatchEvent(new MouseEvent('mouseup'));
 
     // Released: further moves change nothing.
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 900, buttons: 1 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+
+    // A move with no button held ends a drag whose mouseup was missed.
+    splitter.dispatchEvent(new MouseEvent('mousedown', { clientX: 600 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 700, buttons: 1 }));
     expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
   });
 
