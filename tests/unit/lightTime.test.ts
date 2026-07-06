@@ -39,6 +39,40 @@ describe('solveEmissionTime', () => {
     expect(sol.lightTime).toBe(0);
     expect(sol.distance).toBe(0);
   });
+
+  it('clamps emission sampling to the lower coverage bound', () => {
+    const min = 90;
+    const max = 200;
+    const tNow = 100;
+    const bodyAt = (t: number) => {
+      if (t < min || t > max) {
+        throw new Error(`outside coverage: ${t}`);
+      }
+      return { x: 30 * C, y: 0, z: 0 };
+    };
+
+    const sol = solveEmissionTime(bodyAt, { x: 0, y: 0, z: 0 }, tNow, { min, max });
+
+    expect(sol.tEmit).toBe(min);
+    expect(sol.lightTime).toBeCloseTo(30, 12);
+    expect(sol.distance).toBeCloseTo(30 * C, 3);
+  });
+
+  it('reports geometric light-time when clamped at the receive-time boundary', () => {
+    const min = 100;
+    const bodyAt = (t: number) => {
+      if (t < min) {
+        throw new Error(`outside coverage: ${t}`);
+      }
+      return { x: 12 * C, y: 0, z: 0 };
+    };
+
+    const sol = solveEmissionTime(bodyAt, { x: 0, y: 0, z: 0 }, min, { min, max: 200 });
+
+    expect(sol.tEmit).toBe(min);
+    expect(sol.lightTime).toBeCloseTo(12, 12);
+    expect(sol.distance).toBeCloseTo(12 * C, 3);
+  });
 });
 
 describe('apparentDirection', () => {

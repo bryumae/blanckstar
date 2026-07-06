@@ -96,8 +96,23 @@ describe('orbitalElementsFromState', () => {
     const vEsc = Math.sqrt((2 * MU_EARTH) / rp);
     const el = orbitalElementsFromState({ x: rp, y: 0, z: 0 }, { x: 0, y: vEsc, z: 0 }, MU_EARTH);
     expect(el.eccentricity).toBeCloseTo(1, 3);
+    expect(el.semiMajorAxis).toBe(Infinity);
     expect(el.apoapsis).toBe(Infinity);
     expect(el.period).toBeNull();
+  });
+
+  it('classifies near-parabolic negative-energy orbits as bound from energy alone', () => {
+    const rp = 7_000_000;
+    const a = 1e15;
+    const e = 1 - rp / a;
+    const vp = Math.sqrt(MU_EARTH * (2 / rp - 1 / a));
+    const el = orbitalElementsFromState({ x: rp, y: 0, z: 0 }, { x: 0, y: vp, z: 0 }, MU_EARTH);
+
+    expect(el.specificEnergy).toBeLessThan(0);
+    expect(el.eccentricity).toBeCloseTo(e, 12);
+    expect(Math.abs(el.semiMajorAxis - a) / a).toBeLessThan(1e-8);
+    expect(Math.abs(el.apoapsis - a * (1 + e)) / (a * (1 + e))).toBeLessThan(1e-8);
+    expect(el.period).not.toBeNull();
   });
 
   it('treats a radial (zero angular momentum) trajectory with inclination 0', () => {

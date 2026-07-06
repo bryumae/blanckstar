@@ -34,7 +34,7 @@ export function isCaptured(shipState: State, earthState: State): boolean {
 export type FailureReason = 'earth-atmosphere' | 'moon-collision' | 'sun-collision';
 
 // Lose — destruction (§2.2). Returns the failure reason, or null if the ship is
-// intact. Earth atmosphere (altitude < 120 km) is checked first, then lunar
+// intact. Earth atmosphere (altitude <= 120 km) is checked first, then lunar
 // surface collision, then within 2 solar radii of the Sun.
 export function failureCheck(
   shipPosition: Vector3,
@@ -42,7 +42,7 @@ export function failureCheck(
   moonPosition: Vector3,
   sunPosition: Vector3,
 ): FailureReason | null {
-  if (altitudeAboveEarth(shipPosition, earthPosition) < MIN_SAFE_ALTITUDE) {
+  if (altitudeAboveEarth(shipPosition, earthPosition) <= MIN_SAFE_ALTITUDE) {
     return 'earth-atmosphere';
   }
   if (norm(sub(shipPosition, moonPosition)) < R_MOON) {

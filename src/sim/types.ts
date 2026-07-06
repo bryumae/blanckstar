@@ -67,14 +67,16 @@ export type MeasurementData =
   | AngularSeparationData;
 
 // Radio lock on Earth beacon (§7.2). Light-time honest: direction is toward
-// Earth-at-transmit-time; range = c*(tReceived - tSent).
+// Earth-at-transmit-time, and range is the geometric distance to that position.
+// At ephemeris coverage edges, tSent can be clamped to the nearest available
+// sample time; derive light-time displays from rangeMeters / c, not timestamps.
 export interface RadioLockData {
   readonly kind: 'radioLock';
   readonly body: 'earth';
   readonly rangeMeters: number;
   readonly direction: Vector3; // unit vector, inertial frame
   readonly quality: number; // cosmetic constant (1) in MVP0
-  readonly tSent: number; // emission time
+  readonly tSent: number; // emission sample time
   readonly tReceived: number; // reception time (= simTime)
 }
 

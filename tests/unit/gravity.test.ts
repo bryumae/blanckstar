@@ -48,4 +48,20 @@ describe('gravityAcceleration', () => {
     expect(total.y).toBeCloseTo(s.y + e.y + m.y, 12);
     expect(total.z).toBeCloseTo(s.z + e.z + m.z, 12);
   });
+
+  it('ignores a body exactly coincident with the ship instead of producing NaN', () => {
+    const bodies = {
+      sun: ORIGIN,
+      earth: { x: 1e7, y: 0, z: 0 },
+      moon: { x: -1e7, y: 0, z: 0 },
+    };
+    const a = gravityAcceleration(ORIGIN, bodies);
+
+    expect(Number.isFinite(a.x)).toBe(true);
+    expect(Number.isFinite(a.y)).toBe(true);
+    expect(Number.isFinite(a.z)).toBe(true);
+    expect(a.x).toBeCloseTo(MU_EARTH / 1e14 - MU_MOON / 1e14, 12);
+    expect(a.y).toBe(0);
+    expect(a.z).toBe(0);
+  });
 });

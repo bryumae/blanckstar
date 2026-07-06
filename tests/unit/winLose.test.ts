@@ -54,8 +54,8 @@ describe('failureCheck', () => {
     expect(failureCheck(ship, earth.position, moon, sun)).toBeNull();
   });
 
-  it('detects atmospheric entry below 120 km', () => {
-    const ship = { x: earth.position.x + R_EARTH + MIN_SAFE_ALTITUDE - 1, y: 0, z: 0 };
+  it('detects atmospheric entry at or below 120 km', () => {
+    const ship = { x: earth.position.x + R_EARTH + MIN_SAFE_ALTITUDE, y: 0, z: 0 };
     expect(failureCheck(ship, earth.position, moon, sun)).toBe('earth-atmosphere');
   });
 
