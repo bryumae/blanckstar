@@ -46,7 +46,7 @@ test('nav rail switches between all three primary screens', async ({ page }) => 
 
   await page.getByRole('button', { name: /^▤ Data/ }).click();
   await expect(page.getByText('RADIO · EARTH BEACON')).toBeVisible();
-  await expect(page.getByText('Script Console')).toBeHidden();
+  await expect(page.locator('.script-workspace')).toBeHidden();
 
   await page.getByRole('button', { name: /◎ Telescope/ }).click();
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeVisible();
