@@ -3,6 +3,7 @@
 // unit-tested directly (the repo's per-file coverage floor is scoped to
 // src/core/, but these are still worth testing as ordinary logic).
 import type { Vector3 } from '../core/vector3';
+import { angleBetween, norm } from '../core/vector3';
 
 // ---- RA/dec -> unit direction (J2000 equatorial-as-rendered; the star
 // catalog and body directions are both plain inertial unit vectors here, so
@@ -65,13 +66,8 @@ export function sunBrightness(distanceMeters: number, referenceDistance: number)
 // phaseFactor maps that to a simple Lambertian-like [0,1] illuminated-fraction
 // factor: (1 + cos(phase)) / 2.
 export function phaseAngle(sunDirFromBody: Vector3, shipDirFromBody: Vector3): number {
-  const dot =
-    sunDirFromBody.x * shipDirFromBody.x + sunDirFromBody.y * shipDirFromBody.y + sunDirFromBody.z * shipDirFromBody.z;
-  const na = Math.sqrt(sunDirFromBody.x ** 2 + sunDirFromBody.y ** 2 + sunDirFromBody.z ** 2);
-  const nb = Math.sqrt(shipDirFromBody.x ** 2 + shipDirFromBody.y ** 2 + shipDirFromBody.z ** 2);
-  if (na === 0 || nb === 0) return 0;
-  const c = Math.min(1, Math.max(-1, dot / (na * nb)));
-  return Math.acos(c);
+  if (norm(sunDirFromBody) === 0 || norm(shipDirFromBody) === 0) return 0;
+  return angleBetween(sunDirFromBody, shipDirFromBody);
 }
 
 // Illuminated-fraction factor in [0, 1] from the phase angle (0 = new, PI = full... note:
