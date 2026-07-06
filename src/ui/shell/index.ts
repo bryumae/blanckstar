@@ -58,6 +58,7 @@ export interface ShellHandle {
 
 export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
   root.textContent = '';
+  const abortController = new AbortController();
   const app = document.createElement('div');
   app.id = 'app-shell';
 
@@ -193,7 +194,9 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
     warpNote,
   );
   warp.append(warpCompact, warpPanel);
-  window.addEventListener('click', () => warp.classList.remove('is-open'));
+  window.addEventListener('click', () => warp.classList.remove('is-open'), {
+    signal: abortController.signal,
+  });
 
   const status = document.createElement('div');
   status.className = 'shell-status';
@@ -538,6 +541,7 @@ export function mountShell(root: HTMLElement, deps: ShellDeps): ShellHandle {
       return screenRoots.get(id)!;
     },
     destroy(): void {
+      abortController.abort();
       deps.removeSimListener(onSimEvent);
       closeOverlay();
       root.textContent = '';
