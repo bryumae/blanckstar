@@ -41,7 +41,7 @@ test('nav rail switches between all three primary screens', async ({ page }) => 
 
   await page.getByRole('button', { name: /Script Console/ }).click();
   await expect(page.getByText('Script Console')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run' })).toBeVisible();
+  await expect(page.locator('.script-btn.run')).toBeVisible();
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeHidden();
 
   await page.getByRole('button', { name: /^▤ Data/ }).click();
@@ -58,7 +58,7 @@ test('running the default script prints console output', async ({ page }) => {
   await startMission(page, /Close call/);
   await page.getByRole('button', { name: /Script Console/ }).click();
 
-  await page.getByRole('button', { name: 'Run' }).click();
+  await page.locator('.script-btn.run').click();
   await expect(page.getByText(/range \(km\):/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
 });
@@ -68,7 +68,7 @@ test('opening a seeded script sheet does not lose default sheet output', async (
   await startMission(page, /Close call/);
   await page.getByRole('button', { name: /Script Console/ }).click();
 
-  await page.getByRole('button', { name: 'Run' }).click();
+  await page.locator('.script-btn.run').click();
   await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
   await page.locator('.script-list-item.seeded', { hasText: 'Calculator' }).click();
   await expect(page.getByRole('button', { name: /calculator\.js/ })).toBeVisible();
