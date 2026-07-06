@@ -18,39 +18,47 @@ test('a fresh sheet shows the API reference drawers, not the output panel', asyn
   await expect(page.locator('.script-api-reference')).toBeVisible();
   await expect(page.locator('.script-console-output-view')).toBeHidden();
   // Both drawers must actually be on screen (toBeVisible passes for content
-  // scrolled below the fold; toBeInViewport does not) — headers and first
-  // rows alike, since the drawers split the pane and scroll independently.
-  await expect(page.getByText('Variables & constants')).toBeInViewport();
-  await expect(page.getByText('Functions', { exact: true })).toBeInViewport();
+  // scrolled below the fold; toBeInViewport does not) — filter headers and
+  // first rows alike, since the drawers sit side by side and scroll
+  // independently.
+  await expect(page.getByPlaceholder('Variables & constants')).toBeInViewport();
+  await expect(page.getByPlaceholder('Functions')).toBeInViewport();
   const drawers = page.locator('.api-ref-drawer');
   await expect(drawers.nth(0).locator('.api-ref-row').first()).toBeInViewport();
   await expect(drawers.nth(1).locator('.api-ref-row').first()).toBeInViewport();
-  // No output history yet — no "Show last output" affordance.
-  await expect(page.getByRole('button', { name: 'Show last output' })).toBeHidden();
+  // Drawers showing → the header Output button is available.
+  await expect(page.getByRole('button', { name: 'Output', exact: true })).toBeEnabled();
 });
 
-test('run opens the output; close returns to drawers; Show last output restores history', async ({ page }) => {
+test('run opens the output; close returns to drawers; Output restores history', async ({ page }) => {
   await openScriptConsole(page);
 
+  const outputBtn = page.getByRole('button', { name: 'Output', exact: true });
   await page.locator('.script-btn.run').click();
   await expect(page.locator('.script-console-output-view')).toBeVisible();
+  await expect(outputBtn).toBeDisabled();
   await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
 
   await page.getByRole('button', { name: 'Close console output' }).click();
   await expect(page.locator('.script-console-output-view')).toBeHidden();
   await expect(page.locator('.script-api-reference')).toBeVisible();
+  await expect(outputBtn).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Show last output' }).click();
+  await outputBtn.click();
   await expect(page.locator('.script-console-output-view')).toBeVisible();
   await expect(page.getByText('script finished')).toBeVisible();
 });
 
-test('the shared filter narrows both drawers', async ({ page }) => {
+test('each drawer filters independently', async ({ page }) => {
   await openScriptConsole(page);
 
-  await page.getByLabel('Filter API by name or description').fill('burn');
+  await page.getByLabel('Filter functions').fill('burn');
   await expect(page.locator('.api-ref-name', { hasText: 'ship.burn(' })).toBeVisible();
   await expect(page.locator('.api-ref-name', { hasText: 'vec(' })).toHaveCount(0);
+  // The variables drawer keeps its rows — the filter is per drawer.
+  await expect(page.locator('.api-ref-name', { hasText: 'AU' }).first()).toBeVisible();
+
+  await page.getByLabel('Filter variables & constants').fill('zz-no-match');
   await expect(page.getByText('No matching variables.')).toBeVisible();
 });
 

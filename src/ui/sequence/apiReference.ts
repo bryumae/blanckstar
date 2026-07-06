@@ -13,9 +13,6 @@ import {
 
 export interface ApiReferencePanel {
   readonly el: HTMLElement;
-  // Toggle the "Show last output" affordance (shown when the sheet has
-  // output history) and wire its click handler.
-  setShowLastOutput(visible: boolean): void;
 }
 
 interface SortState {
@@ -47,29 +44,13 @@ function sortSelect(onChange: (state: SortState) => void): HTMLSelectElement {
   return select;
 }
 
-export function createApiReferencePanel(onShowLastOutput: () => void): ApiReferencePanel {
+export function createApiReferencePanel(): ApiReferencePanel {
   const el = document.createElement('div');
   el.className = 'script-api-reference';
 
-  // ---- toolbar: shared filter + Show last output ----
-  const toolbar = document.createElement('div');
-  toolbar.className = 'api-ref-toolbar';
-  const filterInput = document.createElement('input');
-  filterInput.className = 'api-ref-filter';
-  filterInput.type = 'search';
-  filterInput.placeholder = 'Filter API by name or description...';
-  filterInput.setAttribute('aria-label', 'Filter API by name or description');
-  const showOutputBtn = document.createElement('button');
-  showOutputBtn.className = 'api-ref-show-output';
-  showOutputBtn.type = 'button';
-  showOutputBtn.textContent = 'Show last output';
-  showOutputBtn.hidden = true;
-  showOutputBtn.addEventListener('click', onShowLastOutput);
-  toolbar.append(filterInput, showOutputBtn);
-
   const drawers = document.createElement('div');
   drawers.className = 'api-ref-drawers';
-  el.append(toolbar, drawers);
+  el.append(drawers);
 
   const variables = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable');
   const functions = SANDBOX_API_DOCS.filter((d) => d.kind === 'function');
@@ -80,28 +61,35 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
     emptyText: string;
     section: HTMLElement;
     body: HTMLElement;
+    filter: HTMLInputElement;
   }
 
-  function buildDrawer(title: string, docs: readonly SandboxApiDoc[], emptyText: string): Drawer {
+  // Each drawer header is its own filter input (the drawer's name doubles as
+  // the placeholder) plus a sort select — no separate toolbar row.
+  function buildDrawer(name: string, docs: readonly SandboxApiDoc[], emptyText: string): Drawer {
     const section = document.createElement('section');
     section.className = 'api-ref-drawer';
     const header = document.createElement('div');
     header.className = 'api-ref-drawer-header';
-    const titleEl = document.createElement('span');
-    titleEl.className = 'api-ref-drawer-title';
-    titleEl.textContent = title;
+    const filter = document.createElement('input');
+    filter.className = 'api-ref-filter';
+    filter.type = 'search';
+    filter.placeholder = name;
+    filter.setAttribute('aria-label', `Filter ${name.toLowerCase()}`);
     const drawer: Drawer = {
       docs,
       sort: SORT_OPTIONS[0]!.state,
       emptyText,
       section,
       body: document.createElement('div'),
+      filter,
     };
     const select = sortSelect((state) => {
       drawer.sort = state;
-      render();
+      renderDrawer(drawer);
     });
-    header.append(titleEl, select);
+    filter.addEventListener('input', () => renderDrawer(drawer));
+    header.append(filter, select);
     drawer.body.className = 'api-ref-rows';
     section.append(header, drawer.body);
     return drawer;
@@ -151,7 +139,7 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
   }
 
   function renderDrawer(drawer: Drawer): void {
-    const visible = sortDocs(filterDocs(drawer.docs, filterInput.value), drawer.sort.key, drawer.sort.direction);
+    const visible = sortDocs(filterDocs(drawer.docs, drawer.filter.value), drawer.sort.key, drawer.sort.direction);
     drawer.body.textContent = '';
     if (visible.length === 0) {
       const empty = document.createElement('div');
@@ -163,18 +151,8 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
     for (const doc of visible) drawer.body.appendChild(renderRow(doc));
   }
 
-  function render(): void {
-    renderDrawer(variablesDrawer);
-    renderDrawer(functionsDrawer);
-  }
+  renderDrawer(variablesDrawer);
+  renderDrawer(functionsDrawer);
 
-  filterInput.addEventListener('input', render);
-  render();
-
-  return {
-    el,
-    setShowLastOutput(visible: boolean): void {
-      showOutputBtn.hidden = !visible;
-    },
-  };
+  return { el };
 }

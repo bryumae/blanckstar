@@ -4,15 +4,17 @@
 
 - Closes #30: the Script Console's per-sheet Console Output panel is now
   closable; when a sheet's output is closed (or it has none) the lower pane
-  shows two read-only API reference drawers — *Variables & constants* and
-  *Functions* — with a shared name/description filter and per-drawer sorting,
-  fed by a new central sandbox-API metadata registry
+  shows two read-only API reference drawers side by side — *Variables &
+  constants* and *Functions* — each with its own name/description filter
+  (the drawer name doubles as the placeholder) and sorting, separated by a
+  draggable splitter, fed by a new central sandbox-API metadata registry
   (`src/sandbox/apiDocs.ts`, set-equality-tested against the real
   `buildGameApi()` surface; §8.3 forbidden names never appear). Running a
   script auto-opens output on the sheet that started the run, an explicit
   mid-run close sticks (errors and an unresponsive worker still force the
-  pane open), post-run sim events never steal the drawers, and a restored
-  sheet with history starts on the drawers with a `Show last output` control.
+  pane open), post-run sim events never steal the drawers, and an `Output`
+  button next to Run/Stop (grayed while output is open) reopens the pane —
+  restored sheets always start on the drawers.
   The seeded `api-reference.js` script is retired — the drawers supersede it.
 
 - Fixes #27: renames Sequence & Calc to Script Console and replaces the old

@@ -443,20 +443,11 @@
   display: none;
 }
 
-.api-ref-toolbar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 15px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-body);
-}
-
+/* per-drawer filter input — the drawer's name doubles as the placeholder */
 .api-ref-filter {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-control);
   background: var(--bg-input);
@@ -467,23 +458,6 @@
 }
 
 .api-ref-filter:focus {
-  border-color: var(--accent);
-}
-
-.api-ref-show-output {
-  flex: 0 0 auto;
-  padding: 5px 10px;
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-control);
-  background: var(--bg-input);
-  color: var(--text-tertiary);
-  font-family: var(--font-ui);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.api-ref-show-output:hover {
-  color: var(--text-primary);
   border-color: var(--accent);
 }
 
@@ -522,19 +496,10 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 15px;
+  gap: 8px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-panel-header);
-}
-
-.api-ref-drawer-title {
-  font-size: 10px;
-  letter-spacing: var(--ls-caps);
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
 }
 
 .api-ref-sort {

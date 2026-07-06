@@ -88,11 +88,12 @@ describe('SANDBOX_API_DOCS registry', () => {
     expect(asyncDocs.sort()).toEqual([...ASYNC_NAMES].sort());
   });
 
-  it('documents every constant as a sync variable with type and value', () => {
+  it('documents every constant as a variable carrying its bare numeric value', () => {
     for (const name of CONSTANT_NAMES) {
       const doc = SANDBOX_API_DOCS.find((d) => d.name === name);
       expect(doc?.kind).toBe('variable');
-      expect((doc as { value: string }).value).toMatch(/^number — \d/);
+      // Numbers carry no type prefix — only a future non-number type would.
+      expect((doc as { value: string }).value).toMatch(/^[\d.e+]+$/);
     }
     const variables = SANDBOX_API_DOCS.filter((d) => d.kind === 'variable').map((d) => d.name);
     expect(variables.sort()).toEqual([...CONSTANT_NAMES].sort());

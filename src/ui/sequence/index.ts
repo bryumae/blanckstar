@@ -132,7 +132,11 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const stopBtn = document.createElement('button');
   stopBtn.className = 'script-btn stop';
   stopBtn.textContent = 'Stop';
-  buttons.append(runBtn, stopBtn);
+  const outputBtn = document.createElement('button');
+  outputBtn.className = 'script-btn output';
+  outputBtn.textContent = 'Output';
+  outputBtn.title = 'Show console output';
+  buttons.append(runBtn, stopBtn, outputBtn);
   editorHeader.append(editorTitle, buttons);
 
   const editor = document.createElement('div');
@@ -177,9 +181,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const linesEl = document.createElement('div');
   linesEl.className = 'script-console-lines';
   outputView.append(outHeader, linesEl);
-  const refPanel = createApiReferencePanel(() => {
-    setActiveOutputVisible(true);
-  });
+  const refPanel = createApiReferencePanel();
   outCol.append(outputView, refPanel.el);
 
   body.append(editorCol, splitter, outCol);
@@ -293,9 +295,10 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     const sheet = currentSheet();
     outputView.hidden = !sheet.outputVisible;
     refPanel.el.hidden = sheet.outputVisible;
+    // The header Output button re-opens the pane; grayed while already open.
+    outputBtn.disabled = sheet.outputVisible;
     // Render lines even while hidden so the pane never shows a stale sheet.
     renderOutput(sheet.outputLines);
-    refPanel.setShowLastOutput(sheet.outputLines.length > 0);
   }
 
   function effectiveStatus(sheet: CodeSheetState): CodeSheetStatus {
@@ -490,6 +493,9 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   });
   closeOutputBtn.addEventListener('click', () => {
     setActiveOutputVisible(false);
+  });
+  outputBtn.addEventListener('click', () => {
+    setActiveOutputVisible(true);
   });
   stopBtn.addEventListener('click', () => {
     deps.console.stop();

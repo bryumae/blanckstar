@@ -28,7 +28,9 @@ export type SandboxApiDocBase = {
 
 export type SandboxVariableDoc = SandboxApiDocBase & {
   kind: 'variable';
-  value: string; // rendered type + value, e.g. "number — 299792458"
+  // Rendered value, e.g. "299792458". Numbers are the norm and carry no type
+  // prefix; a future non-number variable spells its type out here.
+  value: string;
   updatedAt?: string; // unused until #31
 };
 
@@ -56,7 +58,7 @@ export const FORBIDDEN_API_NAMES = [
 const SYNC = 'Synchronous — no await.';
 
 function constant(name: string, value: number, description: string): SandboxVariableDoc {
-  return { kind: 'variable', name, description, source: 'builtin', value: `number — ${value}` };
+  return { kind: 'variable', name, description, source: 'builtin', value: String(value) };
 }
 
 function asyncFn(name: string, args: string, description: string): SandboxFunctionDoc {
