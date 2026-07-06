@@ -197,6 +197,13 @@ describe('mountSequenceScreen', () => {
     // Each drawer's filter carries the drawer name as its placeholder.
     const placeholders = [...root.querySelectorAll('.api-ref-filter')].map((e) => (e as HTMLInputElement).placeholder);
     expect(placeholders).toEqual(['Variables & constants', 'Functions']);
+    // The sections keep the drawer name for assistive tech — the placeholder
+    // disappears once the user types.
+    const labels = [...root.querySelectorAll('.api-ref-drawer')].map((e) => e.getAttribute('aria-label'));
+    expect(labels).toEqual(['Variables & constants', 'Functions']);
+    const drawerSplitter = root.querySelector('.api-ref-splitter')!;
+    expect(drawerSplitter.getAttribute('role')).toBe('separator');
+    expect(drawerSplitter.getAttribute('aria-orientation')).toBe('vertical');
   });
 
   it('Run opens the output pane; close returns to drawers with history kept', () => {
@@ -314,7 +321,7 @@ describe('mountSequenceScreen', () => {
 
   it('dragging the drawer splitter resizes the two drawers with clamping', () => {
     mountWithSink(root);
-    const drawers = root.querySelector('.api-ref-drawers') as HTMLElement;
+    const drawers = root.querySelector('.script-api-reference') as HTMLElement;
     drawers.getBoundingClientRect = () => ({ left: 100, top: 0, width: 1000, height: 300, right: 1100, bottom: 300, x: 100, y: 0, toJSON: () => '' });
     const splitter = root.querySelector('.api-ref-splitter') as HTMLElement;
     const sections = root.querySelectorAll('.api-ref-drawer');

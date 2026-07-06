@@ -431,12 +431,14 @@
   display: none;
 }
 
-/* read-only sandbox API reference drawers (issue #30) */
+/* read-only sandbox API reference drawers (issue #30): the panel root IS the
+ * side-by-side drawers container; each drawer scrolls its own rows */
 .script-api-reference {
   flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 0;
+  overflow: hidden;
 }
 
 .script-api-reference[hidden] {
@@ -461,16 +463,6 @@
   border-color: var(--accent);
 }
 
-/* both drawers stay on screen, side by side; each scrolls its own rows */
-.api-ref-drawers {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: row;
-  gap: 0;
-  overflow: hidden;
-  min-height: 0;
-}
-
 .api-ref-drawer {
   flex: 1 1 50%;
   min-width: 0;
@@ -489,7 +481,7 @@
 }
 
 .api-ref-splitter:hover,
-.api-ref-drawers.is-resizing .api-ref-splitter {
+.script-api-reference.is-resizing .api-ref-splitter {
   background: var(--accent);
 }
 

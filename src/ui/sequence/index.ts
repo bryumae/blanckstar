@@ -153,7 +153,11 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   const splitter = document.createElement('div');
   splitter.className = 'script-splitter';
-  splitter.role = 'separator';
+  // setAttribute, not the .role IDL property — ARIA reflection is missing in
+  // older engines, where the property assignment is a silent expando.
+  splitter.setAttribute('role', 'separator');
+  splitter.setAttribute('aria-orientation', 'horizontal');
+  splitter.setAttribute('aria-label', 'Resize editor and output');
   splitter.title = 'Resize editor and output';
 
   // Lower pane: either the sheet's console output or the read-only API
@@ -182,8 +186,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   const linesEl = document.createElement('div');
   linesEl.className = 'script-console-lines';
   outputView.append(outHeader, linesEl);
-  const refPanel = createApiReferencePanel();
-  outCol.append(outputView, refPanel.el);
+  const apiReference = createApiReferencePanel();
+  outCol.append(outputView, apiReference);
 
   body.append(editorCol, splitter, outCol);
   work.append(sheetTabs, body);
@@ -295,7 +299,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   function renderLowerPane(): void {
     const sheet = currentSheet();
     outputView.hidden = !sheet.outputVisible;
-    refPanel.el.hidden = sheet.outputVisible;
+    apiReference.hidden = sheet.outputVisible;
     // The header Output button re-opens the pane; grayed while already open.
     outputBtn.disabled = sheet.outputVisible;
     // Render lines even while hidden so the pane never shows a stale sheet.
