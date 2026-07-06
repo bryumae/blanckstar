@@ -97,8 +97,8 @@ export function computeBodyPlacement(
     // body to ship (using the same emission-time body position for the
     // Sun-direction leg keeps the geometry self-consistent for a "sun is far
     // away" approximation).
-    const bodyPosAtEmit = bodyPositionAt(tNow - apparent.lightTime);
-    const sunPos = positionAt(ephemeris, 'sun', tNow - apparent.lightTime);
+    const bodyPosAtEmit = bodyPositionAt(apparent.tEmit);
+    const sunPos = positionAt(ephemeris, 'sun', apparent.tEmit);
     const sunDirFromBody: Vector3 = {
       x: sunPos.x - bodyPosAtEmit.x,
       y: sunPos.y - bodyPosAtEmit.y,

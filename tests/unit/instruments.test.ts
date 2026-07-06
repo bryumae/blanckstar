@@ -9,6 +9,7 @@ import {
 import { positionAt } from '../../src/core/ephemerisInterp';
 import { solveEmissionTime, apparentDirection } from '../../src/core/lightTime';
 import { C } from '../../src/core/constants';
+import type { EphemerisData } from '../../src/core/ephemerisTypes';
 import { sub, norm, normalize, angleBetween } from '../../src/core/vector3';
 import { loadRealEphemeris, coverageEpoch } from './simHelpers';
 
@@ -25,7 +26,7 @@ describe('radioLockEarth light-time (§7.2)', () => {
     // Independent recomputation via the core emission solver.
     const sol = solveEmissionTime((t) => positionAt(eph, 'earth', t), ship, epoch);
     expect(lock.tSent).toBeCloseTo(sol.tEmit, 6);
-    expect(lock.rangeMeters).toBeCloseTo(C * (epoch - sol.tEmit), 3);
+    expect(lock.rangeMeters).toBeCloseTo(sol.lightTime * C, 3);
     // Range equals the geometric distance to Earth-at-emit (within tolerance).
     expect(lock.rangeMeters).toBeCloseTo(sol.distance, 0);
     // Direction points at Earth's emit-time position, not its now position.
@@ -40,6 +41,32 @@ describe('radioLockEarth light-time (§7.2)', () => {
     expect(angleBetween(lock.direction, nowDir)).toBeGreaterThan(0);
     expect(lock.quality).toBe(1);
     expect(lock.tReceived).toBe(epoch);
+  });
+
+  it('reports geometric range when emission time clamps at ephemeris start', () => {
+    const t0 = 1_000;
+    const earth = { x: 1e9, y: 0, z: 0 };
+    const edgeEphemeris: EphemerisData = {
+      frame: eph.frame,
+      units: eph.units,
+      bodies: {
+        earth: {
+          t0,
+          dt: 60,
+          samples: [
+            [earth.x, earth.y, earth.z, 0, 0, 0],
+            [earth.x, earth.y, earth.z, 0, 0, 0],
+          ],
+        },
+      },
+    };
+    const ship = { x: earth.x + 12 * C, y: 0, z: 0 };
+
+    const lock = radioLockEarth(edgeEphemeris, ship, t0);
+
+    expect(lock.tSent).toBe(t0);
+    expect(lock.tReceived).toBe(t0);
+    expect(lock.rangeMeters).toBeCloseTo(12 * C, 3);
   });
 });
 

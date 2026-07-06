@@ -54,8 +54,24 @@ describe('solveEmissionTime', () => {
     const sol = solveEmissionTime(bodyAt, { x: 0, y: 0, z: 0 }, tNow, { min, max });
 
     expect(sol.tEmit).toBe(min);
-    expect(sol.lightTime).toBe(tNow - min);
+    expect(sol.lightTime).toBeCloseTo(30, 12);
     expect(sol.distance).toBeCloseTo(30 * C, 3);
+  });
+
+  it('reports geometric light-time when clamped at the receive-time boundary', () => {
+    const min = 100;
+    const bodyAt = (t: number) => {
+      if (t < min) {
+        throw new Error(`outside coverage: ${t}`);
+      }
+      return { x: 12 * C, y: 0, z: 0 };
+    };
+
+    const sol = solveEmissionTime(bodyAt, { x: 0, y: 0, z: 0 }, min, { min, max: 200 });
+
+    expect(sol.tEmit).toBe(min);
+    expect(sol.lightTime).toBeCloseTo(12, 12);
+    expect(sol.distance).toBeCloseTo(12 * C, 3);
   });
 });
 

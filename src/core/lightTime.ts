@@ -22,8 +22,8 @@ export const TOL_S = 1e-6;
 const MAX_ITERS = 50;
 
 export interface EmissionSolution {
-  readonly tEmit: number; // emission time (unix seconds)
-  readonly lightTime: number; // t_now - t_emit (seconds)
+  readonly tEmit: number; // emission sample time (unix seconds; clamped to bounds when provided)
+  readonly lightTime: number; // geometric signal time, distance / c (seconds)
   readonly position: Vector3; // body position at t_emit
   readonly distance: number; // |body_pos(t_emit) - ship_pos| (meters)
 }
@@ -61,13 +61,13 @@ export function solveEmissionTime(
     tEmit = nextTEmit;
   }
 
-  return { tEmit, lightTime: tNow - tEmit, position, distance };
+  return { tEmit, lightTime: distance / C, position, distance };
 }
 
 export interface ApparentDirection {
   readonly direction: Vector3; // unit vector from ship toward the body at emission
   readonly distance: number; // meters
-  readonly tEmit: number; // emission time
+  readonly tEmit: number; // emission sample time
   readonly lightTime: number; // seconds
 }
 

@@ -9,7 +9,9 @@
   energy-only bound classification; exact body/ship gravity coincidence
   contributes zero acceleration instead of NaN/Infinity; and the exact
   120 km Earth-atmosphere floor is treated as loss rather than a win/loss
-  dead band.
+  dead band. Clamped light-time solutions keep the ephemeris sample time
+  bounded while reporting radio range and displayed light-time from the
+  geometric distance, not from the clamped timestamp delta.
 
 - Fixes #16: `mountTelescopeScreen`'s and `mountDebugOverlay`'s `destroy()`
   now abort the `window`-level `mousemove`/`mouseup` (and, for the telescope

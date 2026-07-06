@@ -10,7 +10,6 @@ import type { Vector3 } from '../core/vector3';
 import { sub, norm, normalize, angleBetween } from '../core/vector3';
 import { positionAt } from '../core/ephemerisInterp';
 import { solveEmissionTime, apparentDirection } from '../core/lightTime';
-import { C } from '../core/constants';
 import type {
   Measurement,
   MeasurementData,
@@ -30,7 +29,9 @@ function bodyCoverage(ephemeris: EphemerisData, body: BodyId): { min: number; ma
 
 // Radio lock on the Earth beacon (§7.2). Light-time honest: solve for the
 // emission time such that light from Earth's position then reaches the ship now;
-// range = c*(tNow - tEmit); direction = unit vector to Earth-at-emit.
+// range = geometric distance to Earth-at-emit; direction = unit vector to
+// Earth-at-emit. At ephemeris coverage edges, tSent is clamped to the available
+// sample time while range remains the geometric light-time distance.
 export function radioLockEarth(ephemeris: EphemerisData, shipPosition: Vector3, tNow: number): RadioLockData {
   const sol = solveEmissionTime((t) => positionAt(ephemeris, 'earth', t), shipPosition, tNow, bodyCoverage(ephemeris, 'earth'));
   const toEarth = sub(sol.position, shipPosition);
@@ -38,7 +39,7 @@ export function radioLockEarth(ephemeris: EphemerisData, shipPosition: Vector3, 
   return {
     kind: 'radioLock',
     body: 'earth',
-    rangeMeters: C * (tNow - sol.tEmit),
+    rangeMeters: sol.distance,
     direction,
     quality: 1, // cosmetic constant in MVP0 (§7.2)
     tSent: sol.tEmit,

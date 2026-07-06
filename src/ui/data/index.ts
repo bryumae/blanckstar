@@ -6,6 +6,7 @@
 // through the injected `send`/listener seam (ADR-0001) — never imports src/sim
 // internals beyond the frozen message-protocol types.
 import type { EphemerisData } from '../../core/ephemerisTypes';
+import { C } from '../../core/constants';
 import type { CandidateStore } from '../candidateStore';
 import { card } from '../dataCard';
 import type {
@@ -123,7 +124,7 @@ export function mountDataScreen(root: HTMLElement, deps: DataScreenDeps): DataSc
     radioStatus.className = 'data-status-badge is-ok';
     radioStatus.innerHTML = '<span class="data-status-dot"></span>LEVEL 1 LOCK';
     radioHero.textContent = fmtKm(lastRadioLock.rangeMeters);
-    const lightTime = lastRadioLock.tReceived - lastRadioLock.tSent;
+    const lightTime = lastRadioLock.rangeMeters / C;
     radioSub.textContent = `${fmtScientific(lastRadioLock.rangeMeters, 8)} m · light-time ${lightTime.toFixed(2)} s`;
     radioDirRow.querySelector('.value')!.textContent = fmtVec(lastRadioLock.direction);
     radioQualityRow.querySelector('.value')!.textContent =
