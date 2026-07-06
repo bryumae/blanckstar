@@ -304,6 +304,28 @@ describe('mountSequenceScreen', () => {
     expect(empties).toEqual(['No matching variables.', 'No matching functions.']);
   });
 
+  it('dragging the drawer splitter resizes the two drawers with clamping', () => {
+    mountWithSink(root);
+    const drawers = root.querySelector('.api-ref-drawers') as HTMLElement;
+    drawers.getBoundingClientRect = () => ({ left: 100, top: 0, width: 1000, height: 300, right: 1100, bottom: 300, x: 100, y: 0, toJSON: () => '' });
+    const splitter = root.querySelector('.api-ref-splitter') as HTMLElement;
+    const sections = root.querySelectorAll('.api-ref-drawer');
+
+    splitter.dispatchEvent(new MouseEvent('mousedown', { clientX: 600 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 400 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('30.00%');
+    expect((sections[1] as HTMLElement).style.flexBasis).toBe('calc(100% - 30.00%)');
+
+    // Clamped at 20% / 80%.
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 0 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+    window.dispatchEvent(new MouseEvent('mouseup'));
+
+    // Released: further moves change nothing.
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
+    expect((sections[0] as HTMLElement).style.flexBasis).toBe('20.00%');
+  });
+
   it('drawer sort reorders rows in both directions without touching the other drawer', () => {
     mountWithSink(root);
     const varSort = root.querySelectorAll('.api-ref-sort')[0] as HTMLSelectElement;

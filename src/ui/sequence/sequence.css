@@ -305,6 +305,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* min-height: 0 is load-bearing — without it the pane refuses to shrink
+   * below the drawers' natural height and pushes past the viewport. */
+  min-height: 0;
   background: var(--bg-viewport);
 }
 
@@ -484,23 +487,39 @@
   border-color: var(--accent);
 }
 
+/* both drawers stay on screen, side by side; each scrolls its own rows */
 .api-ref-drawers {
   flex: 1 1 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0;
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
 }
 
 .api-ref-drawer {
+  flex: 1 1 50%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
+/* draggable divider between the two drawers */
+.api-ref-splitter {
+  flex: 0 0 7px;
+  cursor: col-resize;
+  background: var(--border-primary);
+  border-left: 3px solid var(--bg-viewport);
+  border-right: 3px solid var(--bg-viewport);
+}
+
+.api-ref-splitter:hover {
+  background: var(--accent);
+}
+
 .api-ref-drawer-header {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -530,6 +549,9 @@
 }
 
 .api-ref-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }

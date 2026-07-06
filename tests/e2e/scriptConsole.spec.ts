@@ -17,8 +17,14 @@ test('a fresh sheet shows the API reference drawers, not the output panel', asyn
 
   await expect(page.locator('.script-api-reference')).toBeVisible();
   await expect(page.locator('.script-console-output-view')).toBeHidden();
-  await expect(page.getByText('Variables & constants')).toBeVisible();
-  await expect(page.getByText('Functions', { exact: true })).toBeVisible();
+  // Both drawers must actually be on screen (toBeVisible passes for content
+  // scrolled below the fold; toBeInViewport does not) — headers and first
+  // rows alike, since the drawers split the pane and scroll independently.
+  await expect(page.getByText('Variables & constants')).toBeInViewport();
+  await expect(page.getByText('Functions', { exact: true })).toBeInViewport();
+  const drawers = page.locator('.api-ref-drawer');
+  await expect(drawers.nth(0).locator('.api-ref-row').first()).toBeInViewport();
+  await expect(drawers.nth(1).locator('.api-ref-row').first()).toBeInViewport();
   // No output history yet — no "Show last output" affordance.
   await expect(page.getByRole('button', { name: 'Show last output' })).toBeHidden();
 });

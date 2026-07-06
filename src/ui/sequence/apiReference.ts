@@ -78,6 +78,7 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
     docs: readonly SandboxApiDoc[];
     sort: SortState;
     emptyText: string;
+    section: HTMLElement;
     body: HTMLElement;
   }
 
@@ -93,6 +94,7 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
       docs,
       sort: SORT_OPTIONS[0]!.state,
       emptyText,
+      section,
       body: document.createElement('div'),
     };
     const select = sortSelect((state) => {
@@ -102,12 +104,37 @@ export function createApiReferencePanel(onShowLastOutput: () => void): ApiRefere
     header.append(titleEl, select);
     drawer.body.className = 'api-ref-rows';
     section.append(header, drawer.body);
-    drawers.appendChild(section);
     return drawer;
   }
 
   const variablesDrawer = buildDrawer('Variables & constants', variables, 'No matching variables.');
   const functionsDrawer = buildDrawer('Functions', functions, 'No matching functions.');
+
+  // Draggable divider between the two drawers — same interaction as the
+  // editor/output splitter, but vertical and session-local (not persisted).
+  const splitter = document.createElement('div');
+  splitter.className = 'api-ref-splitter';
+  splitter.role = 'separator';
+  splitter.title = 'Resize drawers';
+  splitter.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    const onMove = (move: MouseEvent): void => {
+      const rect = drawers.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const ratio = Math.min(0.8, Math.max(0.2, (move.clientX - rect.left) / rect.width));
+      const pct = `${(ratio * 100).toFixed(2)}%`;
+      variablesDrawer.section.style.flexBasis = pct;
+      functionsDrawer.section.style.flexBasis = `calc(100% - ${pct})`;
+    };
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  drawers.append(variablesDrawer.section, splitter, functionsDrawer.section);
 
   function renderRow(doc: SandboxApiDoc): HTMLElement {
     const row = document.createElement('div');
