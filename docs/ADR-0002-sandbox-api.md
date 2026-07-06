@@ -221,3 +221,17 @@ caused the predictor-parity fixes noted above. That wiring, plus the
 `src/core/burn.ts`: pure, importable by the sim, the sandbox, and the UI
 alike. `predict()` and the predictor tab both import from `src/core` now;
 `src/sim/physics.ts` no longer exists.
+
+## Addendum (issue #30) — sandbox-API documentation source of truth
+
+The in-app documentation of the §8.2 surface now lives in one place:
+`src/sandbox/apiDocs.ts`, a pure-data registry (name, kind, args, async flag,
+description) set-equality-tested against the real `buildGameApi()` surface, so
+neither an undocumented API member nor a documented ghost can ship. The Script
+Console's read-only API reference drawers render from it, #32's autocomplete
+will consume it, and the previously seeded `api-reference.js` script (a
+hand-maintained comment copy of the README section) is retired. The forbidden
+§8.3 names are exported alongside (`FORBIDDEN_API_NAMES`) purely so the
+absence tests assert against one list. README §Scripting API remains a
+hand-written duplicate for now — generating or drift-testing it against the
+registry is tracked as a follow-up.

@@ -14,14 +14,12 @@ class FakeStorage implements StorageLike {
 }
 
 describe('ScriptStore', () => {
-  it('seeds a starter script plus an API-reference script on first use', () => {
+  it('seeds only the starter script on first use (api-reference.js retired by #30)', () => {
     const store = new ScriptStore(new FakeStorage());
-    expect(store.list().length).toBe(2);
+    expect(store.list().length).toBe(1);
     expect(store.getOpenId()).toBe(store.list()[0]!.id);
+    expect(store.list()[0]!.name).toBe('sequence.js');
     expect(store.list()[0]!.source).toMatch(/radio\.lockEarth/);
-    expect(store.list()[1]!.name).toBe('api-reference.js');
-    expect(store.list()[1]!.source).toMatch(/Scripting API reference/);
-    expect(store.list()[1]!.source).toMatch(/radio\.lockEarth/);
   });
 
   it('round-trips scripts + last-open through storage', () => {
@@ -33,7 +31,7 @@ describe('ScriptStore', () => {
     a.setOpen(created.id);
 
     const b = new ScriptStore(storage);
-    expect(b.list().length).toBe(3);
+    expect(b.list().length).toBe(2);
     const reloaded = b.get(created.id)!;
     expect(reloaded.name).toBe('burn_plan.js');
     expect(reloaded.source).toBe('log(42)');
