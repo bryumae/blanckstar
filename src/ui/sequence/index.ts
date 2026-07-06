@@ -1,42 +1,42 @@
-// Sequence & Calculation screen (mvp0_spec.md §7.6, §7.7, §7.9). Tab bar plus
-// the Script Console (implemented here); Calculator / Candidates / Trajectory
-// Predictor are placeholder panels a later phase fills — see the
-// `extraTabs` registration seam so that agent adds tabs without editing this
-// file. Plain DOM/CSS, no framework (repo rule 5).
+// Script Console screen (mvp0_spec.md §7.9). Plain DOM/CSS, no framework
+// (repo rule 5). The workspace is a set of runnable code sheets: persisted
+// user scripts plus seeded calculator/candidate/predictor sheets.
 import type { StorageLike } from '../../net/storage';
-import { ScriptStore } from './scriptStore';
+import { ScriptStore, type ScriptEntry } from './scriptStore';
+import {
+  SEEDED_SHEETS,
+  ScriptConsoleWorkspaceStore,
+  scriptIdFromSheetId,
+  userSheetId,
+  type CodeSheetState,
+  type CodeSheetStatus,
+  type ConsoleLineKind,
+  type ConsoleOutputLine,
+} from './workspaceStore';
 import './sequence.css';
 
+export type { ConsoleLineKind } from './workspaceStore';
+
 // What the Script Console needs to drive a running script. The SandboxBridge
-// implements this; the UI depends only on this surface (not the bridge class),
-// so it stays DOM-only and testable.
+// implements this; the UI depends only on this surface (not the bridge class).
 export interface ScriptConsoleController {
   run(source: string): void;
   stop(): void;
   isRunning(): boolean;
 }
 
-// One console output line (mvp0_spec.md §7.9: logs, errors, burn/lock events).
-export type ConsoleLineKind = 'log' | 'event' | 'ok' | 'error';
-
-// A later-phase tab (Calculator / Candidates / Trajectory Predictor). Registered
-// through deps so the phase-8 agent never edits this file (see registerSequenceTab).
+// Retained as a legacy type for the detached GUI tab modules/tests. The Script
+// Console no longer consumes these as screen modes.
 export interface SequenceTab {
   readonly id: string;
   readonly label: string;
-  // Mount the tab's content into `root`. Called once, lazily, on first show.
   readonly mount: (root: HTMLElement) => void;
 }
 
 export interface SequenceScreenDeps {
   readonly storage: StorageLike;
   readonly console: ScriptConsoleController;
-  // Register the Script Console's output/status callbacks so the bridge (or a
-  // test) can push lines and running/unresponsive state to the UI. Called once
-  // during mount with the sink the UI exposes.
   readonly bindConsole: (sink: ConsoleSink) => void;
-  // Extra tabs beyond Script Console. Optional; defaults to placeholder panels.
-  readonly extraTabs?: readonly SequenceTab[];
 }
 
 // The console output sink the screen exposes to its host (the bridge writes to it).
@@ -52,334 +52,464 @@ export interface SequenceScreenHandle {
   destroy(): void;
 }
 
-// Default placeholder tabs (filled by phase 8). Rendered with a data-tab
-// attribute so the later agent can target them.
-const PLACEHOLDER_TABS: readonly { id: string; label: string }[] = [
-  { id: 'calculator', label: 'Calculator' },
-  { id: 'candidates', label: 'Candidates' },
-  { id: 'predictor', label: 'Trajectory Predictor' },
-];
+function sheetFromScript(script: ScriptEntry): CodeSheetState {
+  return {
+    id: userSheetId(script.id),
+    kind: 'user-script',
+    name: script.name,
+    source: script.source,
+    outputLines: [],
+    status: 'idle',
+  };
+}
+
+function linePrefix(kind: ConsoleLineKind): string {
+  if (kind === 'error') return 'x';
+  if (kind === 'ok') return 'ok';
+  return '>';
+}
 
 export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps): SequenceScreenHandle {
   root.textContent = '';
-  root.classList.add('sequence-screen');
+  root.classList.add('sequence-screen', 'script-console');
 
-  const store = new ScriptStore(deps.storage);
+  const scripts = new ScriptStore(deps.storage);
+  const workspace = new ScriptConsoleWorkspaceStore(deps.storage);
 
-  // ---- tab bar ----
-  const tabBar = document.createElement('div');
-  tabBar.className = 'sequence-tabs';
-  const panels = document.createElement('div');
-  panels.className = 'sequence-panels';
-  root.append(tabBar, panels);
+  let activeSheetId = workspace.getActiveSheetId();
+  let runningSheetId: string | null = deps.console.isRunning() ? activeSheetId : null;
+  let unresponsive = false;
 
-  interface TabRecord {
-    id: string;
-    button: HTMLButtonElement;
-    panel: HTMLElement;
-    mount?: (root: HTMLElement) => void;
-    mounted: boolean;
+  // ---- left rail ----
+  const rail = document.createElement('div');
+  rail.className = 'script-list';
+  const railHeader = document.createElement('div');
+  railHeader.className = 'script-list-header';
+  const railTitle = document.createElement('span');
+  railTitle.textContent = 'SHEETS';
+  const newBtn = document.createElement('button');
+  newBtn.className = 'del';
+  newBtn.textContent = '+';
+  newBtn.title = 'New script';
+  newBtn.style.color = 'var(--accent)';
+  railHeader.append(railTitle, newBtn);
+  const railItems = document.createElement('div');
+  railItems.className = 'script-list-items';
+  rail.append(railHeader, railItems);
+
+  // ---- workspace ----
+  const work = document.createElement('div');
+  work.className = 'script-workspace';
+  const sheetTabs = document.createElement('div');
+  sheetTabs.className = 'sheet-tabs';
+  const body = document.createElement('div');
+  body.className = 'script-workspace-body';
+
+  const editorCol = document.createElement('div');
+  editorCol.className = 'script-editor-col';
+  const editorHeader = document.createElement('div');
+  editorHeader.className = 'script-editor-header';
+  const editorTitle = document.createElement('div');
+  editorTitle.className = 'title';
+  const nameInput = document.createElement('input');
+  nameInput.className = 'script-name';
+  nameInput.spellcheck = false;
+  const badge = document.createElement('span');
+  badge.className = 'script-badge';
+  badge.textContent = 'SANDBOXED / WORKER';
+  editorTitle.append(nameInput, badge);
+  const buttons = document.createElement('div');
+  buttons.className = 'script-buttons';
+  const runBtn = document.createElement('button');
+  runBtn.className = 'script-btn run';
+  runBtn.textContent = 'Run';
+  const stopBtn = document.createElement('button');
+  stopBtn.className = 'script-btn stop';
+  stopBtn.textContent = 'Stop';
+  buttons.append(runBtn, stopBtn);
+  editorHeader.append(editorTitle, buttons);
+
+  const editor = document.createElement('div');
+  editor.className = 'script-editor';
+  const gutter = document.createElement('div');
+  gutter.className = 'script-gutter';
+  const textarea = document.createElement('textarea');
+  textarea.className = 'script-textarea';
+  textarea.spellcheck = false;
+  textarea.wrap = 'off';
+  editor.append(gutter, textarea);
+  editorCol.append(editorHeader, editor);
+
+  const splitter = document.createElement('div');
+  splitter.className = 'script-splitter';
+  splitter.role = 'separator';
+  splitter.title = 'Resize editor and output';
+
+  const outCol = document.createElement('div');
+  outCol.className = 'script-console-out is-open';
+  const outHeader = document.createElement('div');
+  outHeader.className = 'script-console-header';
+  const outLabel = document.createElement('span');
+  outLabel.className = 'label';
+  outLabel.textContent = 'CONSOLE OUTPUT';
+  const statusEl = document.createElement('span');
+  statusEl.className = 'script-console-status';
+  const headerRight = document.createElement('div');
+  headerRight.className = 'script-console-header-right';
+  headerRight.append(statusEl);
+  outHeader.append(outLabel, headerRight);
+  const linesEl = document.createElement('div');
+  linesEl.className = 'script-console-lines';
+  outCol.append(outHeader, linesEl);
+
+  body.append(editorCol, splitter, outCol);
+  work.append(sheetTabs, body);
+  root.append(rail, work);
+
+  function sheetForId(id: string): CodeSheetState | null {
+    const scriptId = scriptIdFromSheetId(id);
+    if (scriptId) {
+      const script = scripts.get(scriptId);
+      const saved = workspace.getSheet(id);
+      return script
+        ? { ...(saved ?? sheetFromScript(script)), name: script.name, source: script.source }
+        : null;
+    }
+    const saved = workspace.getSheet(id);
+    const seed = SEEDED_SHEETS.find((s) => s.id === id);
+    return saved ?? seed ?? null;
   }
-  const tabs: TabRecord[] = [];
-  let activeTabId = 'script';
 
-  function selectTab(id: string): void {
-    activeTabId = id;
-    for (const t of tabs) {
-      const active = t.id === id;
-      t.button.classList.toggle('is-active', active);
-      t.panel.classList.toggle('is-active', active);
-      if (active && !t.mounted && t.mount) {
-        t.mount(t.panel);
-        t.mounted = true;
-      }
+  function ensureOpen(id: string): void {
+    const sheet = sheetForId(id);
+    if (!sheet) return;
+    workspace.openSheet(sheet);
+    activeSheetId = id;
+  }
+
+  function ensureInitialSheet(): void {
+    const openIds = workspace.getOpenSheetIds().filter((id) => sheetForId(id) !== null);
+    if (openIds.length > 0) {
+      const restored = activeSheetId && openIds.includes(activeSheetId) ? activeSheetId : openIds[0]!;
+      for (const id of openIds) ensureOpen(id);
+      activeSheetId = restored;
+      workspace.setActive(restored);
+      return;
+    }
+    const fallback = userSheetId(scripts.getOpenId() ?? scripts.list()[0]!.id);
+    ensureOpen(fallback);
+  }
+
+  function currentSheet(): CodeSheetState {
+    const sheet = activeSheetId ? sheetForId(activeSheetId) : null;
+    if (!sheet) {
+      ensureInitialSheet();
+      return sheetForId(activeSheetId!)!;
+    }
+    return sheet;
+  }
+
+  function persistActiveSource(): void {
+    const id = activeSheetId;
+    if (!id) return;
+    const scriptId = scriptIdFromSheetId(id);
+    if (scriptId) {
+      scripts.updateSource(scriptId, textarea.value);
+    }
+    workspace.updateSheet(id, { source: textarea.value });
+  }
+
+  function persistActiveName(): void {
+    const id = activeSheetId;
+    if (!id) return;
+    const value = nameInput.value.trim() || 'untitled.js';
+    nameInput.value = value;
+    const scriptId = scriptIdFromSheetId(id);
+    if (scriptId) {
+      scripts.rename(scriptId, value);
+    }
+    workspace.updateSheet(id, { name: value });
+  }
+
+  function renderGutter(): void {
+    const lineCount = textarea.value.split('\n').length;
+    gutter.textContent = '';
+    for (let i = 1; i <= lineCount; i += 1) {
+      const d = document.createElement('div');
+      d.textContent = String(i);
+      gutter.appendChild(d);
     }
   }
 
-  function addTab(id: string, label: string, buildPanel: (panel: HTMLElement) => void, lazyMount?: (root: HTMLElement) => void): void {
-    const button = document.createElement('button');
-    button.className = 'sequence-tab';
-    button.textContent = label;
-    button.dataset.tab = id;
-    button.addEventListener('click', () => selectTab(id));
-    const panel = document.createElement('div');
-    panel.className = 'sequence-panel';
-    panel.dataset.tab = id;
-    buildPanel(panel);
-    tabBar.appendChild(button);
-    panels.appendChild(panel);
-    tabs.push({ id, button, panel, mount: lazyMount, mounted: lazyMount === undefined });
+  function renderOutput(lines: readonly ConsoleOutputLine[]): void {
+    linesEl.textContent = '';
+    if (lines.length === 0) {
+      const idleEl = document.createElement('div');
+      idleEl.className = 'script-console-idle';
+      idleEl.textContent = 'Console idle. Press Run to execute this sheet.';
+      linesEl.appendChild(idleEl);
+      return;
+    }
+    for (const entry of lines) {
+      const line = document.createElement('div');
+      line.className = `script-console-line ${entry.kind}`;
+      const prefix = document.createElement('span');
+      prefix.className = 'prefix';
+      prefix.textContent = linePrefix(entry.kind);
+      const text = document.createElement('span');
+      text.className = 'text';
+      text.textContent = entry.text;
+      line.append(prefix, text);
+      linesEl.appendChild(line);
+    }
+    linesEl.scrollTop = linesEl.scrollHeight;
   }
 
-  // ---- Script Console tab ----
-  addTab('script', 'Script Console', (panel) => buildScriptConsole(panel));
-
-  // ---- extra tabs (later phases) ----
-  const extra = deps.extraTabs ?? PLACEHOLDER_TABS.map((t) => ({
-    id: t.id,
-    label: t.label,
-    mount: (r: HTMLElement) => {
-      const ph = document.createElement('div');
-      ph.className = 'sequence-placeholder';
-      ph.textContent = `${t.label} — coming in a later phase`;
-      r.appendChild(ph);
-    },
-  }));
-  for (const t of extra) {
-    addTab(t.id, t.label, () => {
-      /* content mounted lazily via lazyMount */
-    }, t.mount);
+  function effectiveStatus(sheet: CodeSheetState): CodeSheetStatus {
+    if (runningSheetId === sheet.id) return unresponsive ? 'unresponsive' : 'running';
+    return sheet.status === 'running' || sheet.status === 'unresponsive' ? 'idle' : sheet.status;
   }
 
-  selectTab('script');
+  function renderStatus(): void {
+    const sheet = currentSheet();
+    const status = effectiveStatus(sheet);
+    statusEl.classList.remove('is-running', 'is-unresponsive', 'is-error');
+    if (status === 'unresponsive') {
+      statusEl.classList.add('is-unresponsive');
+      statusEl.textContent = 'unresponsive - Stop to terminate';
+    } else if (status === 'running') {
+      statusEl.classList.add('is-running');
+      statusEl.textContent = 'running';
+    } else if (status === 'error') {
+      statusEl.classList.add('is-error');
+      statusEl.textContent = 'error';
+    } else {
+      statusEl.textContent = 'idle';
+    }
+    runBtn.disabled = deps.console.isRunning();
+    stopBtn.disabled = !deps.console.isRunning();
+  }
 
-  // ================= Script Console implementation =================
-  function buildScriptConsole(panel: HTMLElement): void {
-    panel.classList.add('script-console');
+  function applySplit(): void {
+    const pct = `${(workspace.getSplitRatio() * 100).toFixed(2)}%`;
+    editorCol.style.flexBasis = pct;
+    outCol.style.flexBasis = `calc(100% - ${pct})`;
+  }
 
-    // -- script list rail --
-    const rail = document.createElement('div');
-    rail.className = 'script-list';
-    const railHeader = document.createElement('div');
-    railHeader.className = 'script-list-header';
-    const railTitle = document.createElement('span');
-    railTitle.textContent = 'SCRIPTS';
-    const newBtn = document.createElement('button');
-    newBtn.className = 'del';
-    newBtn.textContent = '＋';
-    newBtn.title = 'New script';
-    newBtn.style.color = 'var(--accent)';
-    railHeader.append(railTitle, newBtn);
-    const railItems = document.createElement('div');
-    railItems.className = 'script-list-items';
-    rail.append(railHeader, railItems);
+  function selectSheet(id: string): void {
+    ensureOpen(id);
+    workspace.setActive(id);
+    activeSheetId = id;
+    const sheet = currentSheet();
+    nameInput.value = sheet.name;
+    textarea.value = sheet.source;
+    renderGutter();
+    renderOutput(sheet.outputLines);
+    renderRail();
+    renderSheetTabs();
+    renderStatus();
+  }
 
-    // -- editor column --
-    const editorCol = document.createElement('div');
-    editorCol.className = 'script-editor-col';
-    const editorHeader = document.createElement('div');
-    editorHeader.className = 'script-editor-header';
-    const editorTitle = document.createElement('div');
-    editorTitle.className = 'title';
-    const nameInput = document.createElement('input');
-    nameInput.className = 'script-name';
-    nameInput.spellcheck = false;
-    const badge = document.createElement('span');
-    badge.className = 'script-badge';
-    badge.textContent = 'SANDBOXED · WORKER';
-    editorTitle.append(nameInput, badge);
-    const buttons = document.createElement('div');
-    buttons.className = 'script-buttons';
-    const runBtn = document.createElement('button');
-    runBtn.className = 'script-btn run';
-    runBtn.textContent = '▸ Run';
-    const stopBtn = document.createElement('button');
-    stopBtn.className = 'script-btn stop';
-    stopBtn.textContent = '■ Stop';
-    buttons.append(runBtn, stopBtn);
-    editorHeader.append(editorTitle, buttons);
+  function openUserScript(script: ScriptEntry): void {
+    selectSheet(userSheetId(script.id));
+    scripts.setOpen(script.id);
+  }
 
-    const editor = document.createElement('div');
-    editor.className = 'script-editor';
-    const gutter = document.createElement('div');
-    gutter.className = 'script-gutter';
-    const textarea = document.createElement('textarea');
-    textarea.className = 'script-textarea';
-    textarea.spellcheck = false;
-    textarea.wrap = 'off';
-    editor.append(gutter, textarea);
-    editorCol.append(editorHeader, editor);
+  function renderRail(): void {
+    railItems.textContent = '';
+    const userHeader = document.createElement('div');
+    userHeader.className = 'script-list-section';
+    userHeader.textContent = 'USER SCRIPTS';
+    railItems.appendChild(userHeader);
+    for (const script of scripts.list()) {
+      const id = userSheetId(script.id);
+      const item = document.createElement('div');
+      item.className = 'script-list-item' + (id === activeSheetId ? ' is-active' : '');
+      item.dataset.sheet = id;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = script.name;
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = 'x';
+      del.title = 'Delete script';
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const wasActive = activeSheetId === id;
+        scripts.delete(script.id);
+        workspace.closeSheet(id, true);
+        if (wasActive) {
+          const nextId = userSheetId(scripts.getOpenId() ?? scripts.list()[0]!.id);
+          selectSheet(nextId);
+        } else {
+          renderRail();
+          renderSheetTabs();
+        }
+      });
+      item.append(name, del);
+      item.addEventListener('click', () => openUserScript(script));
+      railItems.appendChild(item);
+    }
 
-    // -- console output column --
-    const outCol = document.createElement('div');
-    outCol.className = 'script-console-out';
-    const outHeader = document.createElement('div');
-    outHeader.className = 'script-console-header';
-    const outLabel = document.createElement('span');
-    outLabel.className = 'label';
-    outLabel.textContent = 'CONSOLE OUTPUT';
-    const statusEl = document.createElement('span');
-    statusEl.className = 'script-console-status';
-    statusEl.textContent = 'idle';
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'script-console-close';
-    closeBtn.textContent = '×';
-    closeBtn.title = 'Close console output';
-    const headerRight = document.createElement('div');
-    headerRight.className = 'script-console-header-right';
-    headerRight.append(statusEl, closeBtn);
-    outHeader.append(outLabel, headerRight);
-    const linesEl = document.createElement('div');
-    linesEl.className = 'script-console-lines';
-    const idleEl = document.createElement('div');
-    idleEl.className = 'script-console-idle';
-    idleEl.textContent = 'Console idle. Press Run to execute the sequence.';
-    linesEl.appendChild(idleEl);
-    outCol.append(outHeader, linesEl);
+    const seedHeader = document.createElement('div');
+    seedHeader.className = 'script-list-section';
+    seedHeader.textContent = 'TEMPLATES';
+    railItems.appendChild(seedHeader);
+    for (const seed of SEEDED_SHEETS) {
+      const item = document.createElement('div');
+      item.className = 'script-list-item seeded' + (seed.id === activeSheetId ? ' is-active' : '');
+      item.dataset.sheet = seed.id;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent =
+        seed.kind === 'calculator'
+          ? 'Calculator'
+          : seed.kind === 'candidates'
+            ? 'Candidates'
+            : 'Trajectory Predictor';
+      item.appendChild(name);
+      item.addEventListener('click', () => selectSheet(seed.id));
+      railItems.appendChild(item);
+    }
+  }
 
-    panel.append(rail, editorCol, outCol);
-
-    // ---- state + rendering ----
-    let openId = store.getOpenId() ?? store.list()[0]!.id;
-
-    function renderList(): void {
-      railItems.textContent = '';
-      for (const s of store.list()) {
-        const item = document.createElement('div');
-        item.className = 'script-list-item' + (s.id === openId ? ' is-active' : '');
-        const name = document.createElement('span');
-        name.className = 'name';
-        name.textContent = s.name;
-        const del = document.createElement('button');
-        del.className = 'del';
-        del.textContent = '×';
-        del.title = 'Delete script';
-        del.addEventListener('click', (e) => {
-          e.stopPropagation();
-          store.delete(s.id);
-          if (openId === s.id) {
-            openId = store.getOpenId() ?? store.list()[0]!.id;
-            loadOpen();
-          }
-          renderList();
+  function renderSheetTabs(): void {
+    sheetTabs.textContent = '';
+    for (const id of workspace.getOpenSheetIds()) {
+      const sheet = sheetForId(id);
+      if (!sheet) continue;
+      const tab = document.createElement('button');
+      tab.className = 'sheet-tab' + (id === activeSheetId ? ' is-active' : '');
+      tab.dataset.sheet = id;
+      const label = document.createElement('span');
+      label.textContent = sheet.name;
+      tab.appendChild(label);
+      if (workspace.getOpenSheetIds().length > 1) {
+        const close = document.createElement('span');
+        close.className = 'sheet-tab-close';
+        close.textContent = 'x';
+        close.addEventListener('click', (event) => {
+          event.stopPropagation();
+          workspace.closeSheet(id);
+          selectSheet(workspace.getActiveSheetId() ?? workspace.getOpenSheetIds()[0]!);
         });
-        item.append(name, del);
-        item.addEventListener('click', () => {
-          openId = s.id;
-          store.setOpen(s.id);
-          loadOpen();
-          renderList();
-        });
-        railItems.appendChild(item);
+        tab.appendChild(close);
       }
+      tab.addEventListener('click', () => selectSheet(id));
+      sheetTabs.appendChild(tab);
     }
+  }
 
-    function renderGutter(): void {
-      const lineCount = textarea.value.split('\n').length;
-      gutter.textContent = '';
-      for (let i = 1; i <= lineCount; i += 1) {
-        const d = document.createElement('div');
-        d.textContent = String(i);
-        gutter.appendChild(d);
-      }
+  function appendLineToSheet(id: string, kind: ConsoleLineKind, text: string): void {
+    workspace.appendOutput(id, { kind, text });
+    if (id === activeSheetId) {
+      renderOutput(currentSheet().outputLines);
     }
+  }
 
-    function loadOpen(): void {
-      const s = store.get(openId);
-      if (!s) return;
-      nameInput.value = s.name;
-      textarea.value = s.source;
-      renderGutter();
-    }
+  newBtn.addEventListener('click', () => {
+    const script = scripts.create();
+    selectSheet(userSheetId(script.id));
+    nameInput.focus();
+  });
+  nameInput.addEventListener('change', () => {
+    persistActiveName();
+    renderRail();
+    renderSheetTabs();
+  });
+  textarea.addEventListener('input', () => {
+    persistActiveSource();
+    renderGutter();
+    renderSheetTabs();
+  });
+  textarea.addEventListener('scroll', () => {
+    gutter.scrollTop = textarea.scrollTop;
+  });
+  runBtn.addEventListener('click', () => {
+    const sheet = currentSheet();
+    workspace.clearOutput(sheet.id);
+    workspace.updateSheet(sheet.id, { status: 'running' });
+    runningSheetId = sheet.id;
+    unresponsive = false;
+    renderOutput([]);
+    renderStatus();
+    deps.console.run(textarea.value);
+  });
+  stopBtn.addEventListener('click', () => {
+    deps.console.stop();
+  });
 
-    // ---- editing ----
-    nameInput.addEventListener('change', () => {
-      const v = nameInput.value.trim() || 'untitled.js';
-      nameInput.value = v;
-      store.rename(openId, v);
-      renderList();
-    });
-    textarea.addEventListener('input', () => {
-      store.updateSource(openId, textarea.value);
-      renderGutter();
-    });
-    textarea.addEventListener('scroll', () => {
-      gutter.scrollTop = textarea.scrollTop;
-    });
-    newBtn.addEventListener('click', () => {
-      const entry = store.create();
-      openId = entry.id;
-      loadOpen();
-      renderList();
-      nameInput.focus();
-    });
-
-    // ---- run / stop ----
-    runBtn.addEventListener('click', () => {
-      outCol.classList.add('is-open');
-      sink.clear();
-      deps.console.run(textarea.value);
-    });
-    closeBtn.addEventListener('click', () => {
-      outCol.classList.remove('is-open');
-    });
-    stopBtn.addEventListener('click', () => {
-      deps.console.stop();
-    });
-
-    // ---- console sink (wired to the bridge via deps.bindConsole) ----
-    let running = false;
-    let unresponsive = false;
-
-    function refreshStatus(): void {
-      statusEl.classList.remove('is-running', 'is-unresponsive', 'is-error');
-      if (unresponsive) {
-        statusEl.classList.add('is-unresponsive');
-        statusEl.textContent = 'unresponsive — Stop to terminate';
-      } else if (running) {
-        statusEl.classList.add('is-running');
-        statusEl.textContent = 'running';
-      } else {
-        statusEl.textContent = 'idle';
-      }
-      runBtn.disabled = running;
-      stopBtn.disabled = !running;
-    }
-
-    const sink: ConsoleSink = {
-      appendLine(kind, text) {
-        if (idleEl.parentElement) idleEl.remove();
-        const line = document.createElement('div');
-        line.className = `script-console-line ${kind}`;
-        const prefix = document.createElement('span');
-        prefix.className = 'prefix';
-        prefix.textContent = kind === 'error' ? '✗' : kind === 'ok' ? '✓' : '›';
-        const t = document.createElement('span');
-        t.className = 'text';
-        t.textContent = text;
-        line.append(prefix, t);
-        linesEl.appendChild(line);
-        linesEl.scrollTop = linesEl.scrollHeight;
-      },
-      clear() {
-        linesEl.textContent = '';
-      },
-      setRunning(v) {
-        running = v;
-        refreshStatus();
-      },
-      setUnresponsive(v) {
-        unresponsive = v;
-        refreshStatus();
-      },
-      setError(message, line) {
-        const where = line !== null ? ` (line ${line})` : '';
-        this.appendLine('error', `${message}${where}`);
-      },
+  splitter.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    body.classList.add('is-resizing');
+    const onMove = (move: MouseEvent): void => {
+      const rect = body.getBoundingClientRect();
+      const height = rect.height || body.clientHeight;
+      if (height <= 0) return;
+      workspace.setSplitRatio((move.clientY - rect.top) / height);
+      applySplit();
     };
+    const onUp = (): void => {
+      body.classList.remove('is-resizing');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
 
-    deps.bindConsole(sink);
-    running = deps.console.isRunning();
-    refreshStatus();
-    loadOpen();
-    renderList();
-  }
+  const sink: ConsoleSink = {
+    appendLine(kind, text) {
+      const targetId = runningSheetId ?? activeSheetId!;
+      appendLineToSheet(targetId, kind, text);
+      if (!deps.console.isRunning() && (kind === 'ok' || kind === 'error')) {
+        runningSheetId = null;
+      }
+    },
+    clear() {
+      const id = runningSheetId ?? activeSheetId;
+      if (!id) return;
+      workspace.clearOutput(id);
+      if (id === activeSheetId) renderOutput([]);
+    },
+    setRunning(running) {
+      if (running) {
+        runningSheetId = runningSheetId ?? activeSheetId;
+        if (runningSheetId) workspace.updateSheet(runningSheetId, { status: 'running' });
+      } else if (runningSheetId) {
+        workspace.updateSheet(runningSheetId, { status: 'idle' });
+        unresponsive = false;
+      }
+      renderStatus();
+    },
+    setUnresponsive(value) {
+      unresponsive = value;
+      if (runningSheetId) workspace.updateSheet(runningSheetId, { status: value ? 'unresponsive' : 'running' });
+      renderStatus();
+    },
+    setError(message, line) {
+      const where = line !== null ? ` (line ${line})` : '';
+      const id = runningSheetId ?? activeSheetId!;
+      appendLineToSheet(id, 'error', `${message}${where}`);
+      workspace.updateSheet(id, { status: 'error' });
+      if (!deps.console.isRunning()) runningSheetId = null;
+      renderStatus();
+    },
+  };
+
+  deps.bindConsole(sink);
+  ensureInitialSheet();
+  applySplit();
+  selectSheet(activeSheetId!);
 
   return {
     destroy(): void {
       root.textContent = '';
-      root.classList.remove('sequence-screen');
+      root.classList.remove('sequence-screen', 'script-console');
     },
   };
 }
 
-// Registration seam for later-phase tabs (mvp0_spec.md §7 tabs). A phase-8 agent
-// builds its tab objects and passes them via `deps.extraTabs`; this helper just
-// documents/normalizes the contract without that agent editing this file.
-export function registerSequenceTab(
-  id: string,
-  label: string,
-  mount: (root: HTMLElement) => void,
-): SequenceTab {
+export function registerSequenceTab(id: string, label: string, mount: (root: HTMLElement) => void): SequenceTab {
   return { id, label, mount };
 }

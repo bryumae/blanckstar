@@ -39,14 +39,14 @@ test('nav rail switches between all three primary screens', async ({ page }) => 
   // Telescope is the default screen.
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeVisible();
 
-  await page.getByRole('button', { name: /Sequence & Calc/ }).click();
+  await page.getByRole('button', { name: /Script Console/ }).click();
   await expect(page.getByText('Script Console')).toBeVisible();
-  await expect(page.getByRole('button', { name: '▸ Run' })).toBeVisible();
+  await expect(page.locator('.script-btn.run')).toBeVisible();
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeHidden();
 
   await page.getByRole('button', { name: /^▤ Data/ }).click();
   await expect(page.getByText('RADIO · EARTH BEACON')).toBeVisible();
-  await expect(page.getByText('Script Console')).toBeHidden();
+  await expect(page.locator('.script-workspace')).toBeHidden();
 
   await page.getByRole('button', { name: /◎ Telescope/ }).click();
   await expect(page.getByText('IDENTIFIED OBJECTS')).toBeVisible();
@@ -56,11 +56,24 @@ test('nav rail switches between all three primary screens', async ({ page }) => 
 test('running the default script prints console output', async ({ page }) => {
   await page.goto('/');
   await startMission(page, /Close call/);
-  await page.getByRole('button', { name: /Sequence & Calc/ }).click();
+  await page.getByRole('button', { name: /Script Console/ }).click();
 
-  await page.getByRole('button', { name: '▸ Run' }).click();
+  await page.locator('.script-btn.run').click();
   await expect(page.getByText(/range \(km\):/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
+});
+
+test('opening a seeded script sheet does not lose default sheet output', async ({ page }) => {
+  await page.goto('/');
+  await startMission(page, /Close call/);
+  await page.getByRole('button', { name: /Script Console/ }).click();
+
+  await page.locator('.script-btn.run').click();
+  await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
+  await page.locator('.script-list-item.seeded', { hasText: 'Calculator' }).click();
+  await expect(page.getByRole('button', { name: /calculator\.js/ })).toBeVisible();
+  await page.getByRole('button', { name: /sequence\.js/ }).click();
+  await expect(page.getByText('script finished')).toBeVisible();
 });
 
 test('Data screen radio lock button fills in the lock card', async ({ page }) => {

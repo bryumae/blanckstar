@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Fixes #27: renames Sequence & Calc to Script Console and replaces the old
+  Calculator/Candidates/Trajectory Predictor mode tabs with open runnable
+  code-sheet tabs. The left rail now opens persisted user scripts or seeded
+  template sheets, each sheet keeps its own editor source, output, and status
+  across reloads, and the editor/output area uses a persisted draggable
+  horizontal split.
+
 - Fixes #24: `mountShell` now scopes its window-level warp-panel close
   listener to the mount lifecycle with an `AbortController`, so
   `destroy()` removes both the sim listener and the shell's window listener
