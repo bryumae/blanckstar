@@ -48,8 +48,8 @@ test('running the default script prints console output', async ({ page }) => {
   await page.getByRole('button', { name: /Script Console/ }).click();
 
   await page.locator('.script-btn.run').click();
-  await expect(page.getByText(/range \(km\):/)).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.script-console-lines').getByText(/range \(km\):/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.script-console-lines').getByText('script finished')).toBeVisible({ timeout: 20_000 });
 });
 
 test('opening a seeded script sheet does not lose default sheet output', async ({ page }) => {

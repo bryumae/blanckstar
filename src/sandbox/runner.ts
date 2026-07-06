@@ -38,22 +38,23 @@ export interface CompiledScript {
 
 // Parse a 1-based source line from an Error stack, if the runtime attached one
 // that references the compiled function. Best-effort: returns null when no
-// usable frame is found. The compiled body starts at line 1 of the anonymous
-// function, so we report the raw line from the top frame.
+// usable frame is found.
 export function extractLine(err: unknown): number | null {
   if (!(err instanceof Error) || typeof err.stack !== 'string') {
     return null;
   }
-  // Match "<anonymous>:LINE:COL" or ":LINE:COL)" in the first frame that
-  // mentions an anonymous/eval source (the AsyncFunction body).
-  const m = err.stack.match(/<anonymous>:(\d+):\d+/) ?? err.stack.match(/eval.*?:(\d+):\d+/);
+  // Match the first frame that mentions an anonymous/eval/AsyncFunction source.
+  const m =
+    err.stack.match(/<anonymous>:(\d+):\d+/) ??
+    err.stack.match(/AsyncFunction:(\d+):\d+/) ??
+    err.stack.match(/eval.*?:(\d+):\d+/);
   if (!m) {
     return null;
   }
   const raw = Number(m[1]);
-  // AsyncFunction bodies are offset by the synthetic function header line; the
-  // player's line 1 shows as stack line 2 in V8. Subtract when it looks offset.
-  return Number.isFinite(raw) ? Math.max(1, raw - 1) : null;
+  // AsyncFunction bodies are offset by the synthetic function wrapper:
+  // `async function anonymous(...params\n) {\n<player source>`.
+  return Number.isFinite(raw) ? Math.max(1, raw - 2) : null;
 }
 
 // Compile `source` into a runnable async function bound to `api`. Throws

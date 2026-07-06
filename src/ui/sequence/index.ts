@@ -15,6 +15,11 @@ import {
 } from './workspaceStore';
 import { createApiReferencePanel } from './apiReference';
 import type { ApiReferenceVarsStore } from './apiReference';
+import {
+  createTextareaEditorHost,
+  type EditorHost,
+  type EditorHostFactory,
+} from './editorHost';
 import { attachSplitterDrag } from './splitter';
 import './sequence.css';
 
@@ -41,6 +46,7 @@ export interface SequenceScreenDeps {
   readonly console: ScriptConsoleController;
   readonly bindConsole: (sink: ConsoleSink) => void;
   readonly sandboxVars?: ApiReferenceVarsStore;
+  readonly createEditorHost?: EditorHostFactory;
 }
 
 // The console output sink the screen exposes to its host (the bridge writes to it).
@@ -84,6 +90,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   let activeSheetId = workspace.getActiveSheetId();
   let runningSheetId: string | null = deps.console.isRunning() ? activeSheetId : null;
   let unresponsive = false;
+  const errorLines = new Map<string, number | null>();
   // Sheets whose output the player explicitly closed while their run was live:
   // ordinary lines from that run stop auto-reopening (the close must stick),
   // but errors and an unresponsive worker still force the pane open.
@@ -109,6 +116,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   // ---- workspace ----
   const work = document.createElement('div');
   work.className = 'script-workspace';
+  const sheetTopbar = document.createElement('div');
+  sheetTopbar.className = 'sheet-topbar';
   const sheetTabs = document.createElement('div');
   sheetTabs.className = 'sheet-tabs';
   const body = document.createElement('div');
@@ -116,17 +125,6 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   const editorCol = document.createElement('div');
   editorCol.className = 'script-editor-col';
-  const editorHeader = document.createElement('div');
-  editorHeader.className = 'script-editor-header';
-  const editorTitle = document.createElement('div');
-  editorTitle.className = 'title';
-  const nameInput = document.createElement('input');
-  nameInput.className = 'script-name';
-  nameInput.spellcheck = false;
-  const badge = document.createElement('span');
-  badge.className = 'script-badge';
-  badge.textContent = 'SANDBOXED / WORKER';
-  editorTitle.append(nameInput, badge);
   const buttons = document.createElement('div');
   buttons.className = 'script-buttons';
   const runBtn = document.createElement('button');
@@ -140,18 +138,13 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   outputBtn.textContent = 'Output';
   outputBtn.title = 'Show console output';
   buttons.append(runBtn, stopBtn, outputBtn);
-  editorHeader.append(editorTitle, buttons);
+  sheetTopbar.append(sheetTabs, buttons);
 
-  const editor = document.createElement('div');
-  editor.className = 'script-editor';
-  const gutter = document.createElement('div');
-  gutter.className = 'script-gutter';
-  const textarea = document.createElement('textarea');
-  textarea.className = 'script-textarea';
-  textarea.spellcheck = false;
-  textarea.wrap = 'off';
-  editor.append(gutter, textarea);
-  editorCol.append(editorHeader, editor);
+  const editorHost: EditorHost = (deps.createEditorHost ?? createTextareaEditorHost)({
+    varsStore: deps.sandboxVars,
+  });
+  const editor = editorHost.element;
+  editorCol.append(editor);
 
   const splitter = document.createElement('div');
   splitter.className = 'script-splitter';
@@ -192,7 +185,7 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   outCol.append(outputView, apiReference.element);
 
   body.append(editorCol, splitter, outCol);
-  work.append(sheetTabs, body);
+  work.append(sheetTopbar, body);
   root.append(rail, work);
 
   function sheetForId(id: string): CodeSheetState | null {
@@ -241,33 +234,12 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   function persistActiveSource(): void {
     const id = activeSheetId;
     if (!id) return;
+    const source = editorHost.getValue();
     const scriptId = scriptIdFromSheetId(id);
     if (scriptId) {
-      scripts.updateSource(scriptId, textarea.value);
+      scripts.updateSource(scriptId, source);
     }
-    workspace.updateSheet(id, { source: textarea.value });
-  }
-
-  function persistActiveName(): void {
-    const id = activeSheetId;
-    if (!id) return;
-    const value = nameInput.value.trim() || 'untitled.js';
-    nameInput.value = value;
-    const scriptId = scriptIdFromSheetId(id);
-    if (scriptId) {
-      scripts.rename(scriptId, value);
-    }
-    workspace.updateSheet(id, { name: value });
-  }
-
-  function renderGutter(): void {
-    const lineCount = textarea.value.split('\n').length;
-    gutter.textContent = '';
-    for (let i = 1; i <= lineCount; i += 1) {
-      const d = document.createElement('div');
-      d.textContent = String(i);
-      gutter.appendChild(d);
-    }
+    workspace.updateSheet(id, { source });
   }
 
   function renderOutput(lines: readonly ConsoleOutputLine[]): void {
@@ -344,9 +316,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     workspace.setActive(id);
     activeSheetId = id;
     const sheet = currentSheet();
-    nameInput.value = sheet.name;
-    textarea.value = sheet.source;
-    renderGutter();
+    editorHost.setValue(sheet.source);
+    editorHost.setErrorLine(errorLines.get(id) ?? null);
     renderLowerPane();
     renderRail();
     renderSheetTabs();
@@ -475,30 +446,34 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
   newBtn.addEventListener('click', () => {
     const script = scripts.create();
     selectSheet(userSheetId(script.id));
-    nameInput.focus();
+    editorHost.focus();
   });
-  nameInput.addEventListener('change', () => {
-    persistActiveName();
-    renderRail();
-    renderSheetTabs();
-  });
-  textarea.addEventListener('input', () => {
+  sheetTabs.addEventListener(
+    'wheel',
+    (event) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      sheetTabs.scrollLeft += event.deltaY;
+      event.preventDefault();
+    },
+    { passive: false },
+  );
+  const unsubscribeEditor = editorHost.onChange(() => {
     persistActiveSource();
-    renderGutter();
+    if (activeSheetId) errorLines.delete(activeSheetId);
+    editorHost.setErrorLine(null);
     renderSheetTabs();
-  });
-  textarea.addEventListener('scroll', () => {
-    gutter.scrollTop = textarea.scrollTop;
   });
   runBtn.addEventListener('click', () => {
     const sheet = currentSheet();
     workspace.updateSheet(sheet.id, { outputLines: [], status: 'running', outputVisible: true });
+    errorLines.delete(sheet.id);
+    editorHost.setErrorLine(null);
     outputClosedForRun.delete(sheet.id);
     runningSheetId = sheet.id;
     unresponsive = false;
     renderLowerPane();
     renderStatus();
-    deps.console.run(textarea.value);
+    deps.console.run(editorHost.getValue());
   });
   closeOutputBtn.addEventListener('click', () => {
     setActiveOutputVisible(false);
@@ -564,6 +539,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
     setError(message, line) {
       const where = line !== null ? ` (line ${line})` : '';
       const id = runningSheetId ?? activeSheetId!;
+      errorLines.set(id, line);
+      if (id === activeSheetId) editorHost.setErrorLine(line);
       appendLineToSheet(id, 'error', `${message}${where}`);
       workspace.updateSheet(id, { status: 'error' });
       if (!deps.console.isRunning()) runningSheetId = null;
@@ -578,6 +555,8 @@ export function mountSequenceScreen(root: HTMLElement, deps: SequenceScreenDeps)
 
   return {
     destroy(): void {
+      unsubscribeEditor();
+      editorHost.destroy();
       apiReference.destroy();
       root.textContent = '';
       root.classList.remove('sequence-screen', 'script-console');

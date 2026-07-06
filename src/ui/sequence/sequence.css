@@ -103,15 +103,27 @@
   min-height: 0;
 }
 
-.sheet-tabs {
+.sheet-topbar {
   flex: 0 0 auto;
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  padding: 0 10px;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 12px 0 10px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-panel-header);
+}
+
+.sheet-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
 .sheet-tab {
@@ -168,50 +180,12 @@
   min-width: 0;
 }
 
-.script-editor-header {
+.script-buttons {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 9px 15px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-body);
-}
-
-.script-editor-header .title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.script-name {
-  font-family: var(--font-mono);
-  font-size: var(--fs-heading);
-  color: var(--text-secondary);
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-control);
-  padding: 2px 6px;
-}
-
-.script-name:focus {
-  border-color: var(--border-secondary);
-  background: var(--bg-input);
-  outline: none;
-}
-
-.script-badge {
-  font-size: 9px;
-  letter-spacing: var(--ls-caps);
-  color: var(--status-ok);
-  border: 1px solid var(--border-primary);
-  padding: 2px 6px;
-  border-radius: var(--radius-tag);
-}
-
-.script-buttons {
-  display: flex;
   gap: 8px;
+  padding: 9px 0;
 }
 
 .script-btn {
@@ -242,7 +216,7 @@
   cursor: not-allowed;
 }
 
-/* editor: textarea with a line-number gutter overlay */
+/* editor host */
 .script-editor {
   flex: 1 1 auto;
   display: flex;
@@ -251,6 +225,30 @@
   overflow: hidden;
 }
 
+.script-cm-editor .cm-editor {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.script-cm-editor .cm-scroller {
+  flex: 1 1 auto;
+}
+
+.cm-script-completion-info,
+.cm-script-hover {
+  color: var(--text-tertiary);
+  white-space: pre-wrap;
+}
+
+.cm-script-completion-title,
+.cm-script-hover-title {
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+/* textarea fallback used by unit tests and detached mounts */
 .script-gutter {
   flex: 0 0 auto;
   width: 44px;
