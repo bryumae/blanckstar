@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Fixes #18: core numeric edge cases now degrade deterministically instead of
+  leaking invalid states. Light-time callers backed by ephemeris data clamp
+  emission-time sampling to body coverage at the dataset boundary; parabolic
+  orbital elements use a positive-infinity semi-major-axis sentinel and
+  energy-only bound classification; exact body/ship gravity coincidence
+  contributes zero acceleration instead of NaN/Infinity; and the exact
+  120 km Earth-atmosphere floor is treated as loss rather than a win/loss
+  dead band.
+
 - Fixes #16: `mountTelescopeScreen`'s and `mountDebugOverlay`'s `destroy()`
   now abort the `window`-level `mousemove`/`mouseup` (and, for the telescope
   screen, filter-menu-close `click`) listeners added at mount, via a shared

@@ -28,33 +28,40 @@ export interface EmissionSolution {
   readonly distance: number; // |body_pos(t_emit) - ship_pos| (meters)
 }
 
+export interface EmissionTimeBounds {
+  readonly min?: number;
+  readonly max?: number;
+}
+
 // Solve for the emission time of light arriving at shipPosition at receive time
-// tNow, given a function returning the body's position at any time.
+// tNow, given a function returning the body's position at any time. When bounds
+// are provided, iteration samples only inside that time interval; this lets
+// ephemeris-backed callers degrade at coverage edges instead of throwing.
 export function solveEmissionTime(
   bodyPositionAt: (t: number) => Vector3,
   shipPosition: Vector3,
   tNow: number,
+  bounds: EmissionTimeBounds = {},
 ): EmissionSolution {
-  let lightTime = 0; // first guess: emission == reception
-  let position = bodyPositionAt(tNow);
+  let tEmit = clamp(tNow, bounds.min ?? -Infinity, bounds.max ?? Infinity);
+  let position = bodyPositionAt(tEmit);
   let distance = norm(sub(position, shipPosition));
 
   for (let i = 0; i < MAX_ITERS; i++) {
-    const tEmit = tNow - lightTime;
     position = bodyPositionAt(tEmit);
     distance = norm(sub(position, shipPosition));
-    const nextLightTime = distance / C;
-    if (Math.abs(nextLightTime - lightTime) < TOL_S) {
-      lightTime = nextLightTime;
-      // Refresh position/distance at the converged emission time.
-      position = bodyPositionAt(tNow - lightTime);
+    const nextTEmit = clamp(tNow - distance / C, bounds.min ?? -Infinity, bounds.max ?? Infinity);
+    if (Math.abs(nextTEmit - tEmit) < TOL_S) {
+      tEmit = nextTEmit;
+      // Refresh position/distance at the converged or clamped emission time.
+      position = bodyPositionAt(tEmit);
       distance = norm(sub(position, shipPosition));
       break;
     }
-    lightTime = nextLightTime;
+    tEmit = nextTEmit;
   }
 
-  return { tEmit: tNow - lightTime, lightTime, position, distance };
+  return { tEmit, lightTime: tNow - tEmit, position, distance };
 }
 
 export interface ApparentDirection {
@@ -71,10 +78,15 @@ export function apparentDirection(
   bodyPositionAt: (t: number) => Vector3,
   shipPosition: Vector3,
   tNow: number,
+  bounds: EmissionTimeBounds = {},
 ): ApparentDirection {
-  const sol = solveEmissionTime(bodyPositionAt, shipPosition, tNow);
+  const sol = solveEmissionTime(bodyPositionAt, shipPosition, tNow, bounds);
   const d = sub(sol.position, shipPosition);
   const direction =
     sol.distance === 0 ? { x: 0, y: 0, z: 0 } : { x: d.x / sol.distance, y: d.y / sol.distance, z: d.z / sol.distance };
   return { direction, distance: sol.distance, tEmit: sol.tEmit, lightTime: sol.lightTime };
+}
+
+function clamp(x: number, lo: number, hi: number): number {
+  return Math.min(Math.max(x, lo), hi);
 }

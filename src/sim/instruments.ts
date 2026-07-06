@@ -20,11 +20,19 @@ import type {
   AngularSeparationData,
 } from './types';
 
+function bodyCoverage(ephemeris: EphemerisData, body: BodyId): { min: number; max: number } {
+  const data = ephemeris.bodies[body];
+  if (!data) {
+    throw new Error(`ephemeris: no data for body "${body}"`);
+  }
+  return { min: data.t0, max: data.t0 + (data.samples.length - 1) * data.dt };
+}
+
 // Radio lock on the Earth beacon (§7.2). Light-time honest: solve for the
 // emission time such that light from Earth's position then reaches the ship now;
 // range = c*(tNow - tEmit); direction = unit vector to Earth-at-emit.
 export function radioLockEarth(ephemeris: EphemerisData, shipPosition: Vector3, tNow: number): RadioLockData {
-  const sol = solveEmissionTime((t) => positionAt(ephemeris, 'earth', t), shipPosition, tNow);
+  const sol = solveEmissionTime((t) => positionAt(ephemeris, 'earth', t), shipPosition, tNow, bodyCoverage(ephemeris, 'earth'));
   const toEarth = sub(sol.position, shipPosition);
   const direction = sol.distance === 0 ? { x: 0, y: 0, z: 0 } : normalize(toEarth);
   return {
@@ -58,8 +66,8 @@ export function angularSeparation(
   bodyA: BodyId,
   bodyB: BodyId,
 ): AngularSeparationData {
-  const a = apparentDirection((t) => positionAt(ephemeris, bodyA, t), shipPosition, tNow);
-  const b = apparentDirection((t) => positionAt(ephemeris, bodyB, t), shipPosition, tNow);
+  const a = apparentDirection((t) => positionAt(ephemeris, bodyA, t), shipPosition, tNow, bodyCoverage(ephemeris, bodyA));
+  const b = apparentDirection((t) => positionAt(ephemeris, bodyB, t), shipPosition, tNow, bodyCoverage(ephemeris, bodyB));
   return {
     kind: 'angularSeparation',
     bodyA,

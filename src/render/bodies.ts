@@ -61,6 +61,14 @@ export interface RenderedBody {
   readonly object: THREE.Object3D; // mesh (resolvable) or sprite (point)
 }
 
+function bodyCoverage(ephemeris: EphemerisData, body: BodyId): { min: number; max: number } {
+  const data = ephemeris.bodies[body];
+  if (!data) {
+    throw new Error(`ephemeris: no data for body "${body}"`);
+  }
+  return { min: data.t0, max: data.t0 + (data.samples.length - 1) * data.dt };
+}
+
 // Compute the apparent placement + brightness for one body at receive time
 // tNow, given the ship's true position. Pure (no THREE) — kept separate from
 // the object-construction below so it's independently testable.
@@ -77,7 +85,7 @@ export function computeBodyPlacement(
   resolvable: boolean;
 } {
   const bodyPositionAt = (t: number) => positionAt(ephemeris, body, t);
-  const apparent = apparentDirection(bodyPositionAt, shipPosition, tNow);
+  const apparent = apparentDirection(bodyPositionAt, shipPosition, tNow, bodyCoverage(ephemeris, body));
   const angularSizeRad = angularSize(BODY_RADIUS[body], apparent.distance);
   const resolvable = angularSizeRad >= MIN_RESOLVABLE_ANGULAR_SIZE;
 

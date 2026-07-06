@@ -23,6 +23,7 @@ export interface OrbitalElements {
 }
 
 const ZERO: Vector3 = { x: 0, y: 0, z: 0 };
+const PARABOLIC_ENERGY_REL_TOL = 1e-12;
 
 export function orbitalElementsFromState(
   position: Vector3,
@@ -60,16 +61,20 @@ export function orbitalElementsFromState(
   // (radial trajectory) — inclination is undefined, report 0.
   const inclination = hMag === 0 ? 0 : Math.acos(clamp(h.z / hMag, -1, 1));
 
-  // Semi-major axis from energy: a = -mu / (2*energy). Parabolic (energy≈0)
-  // gives ±Infinity, which propagates sensibly below.
-  const semiMajorAxis = -mu / (2 * specificEnergy);
+  const parabolicEnergyTol = (mu / rMag) * PARABOLIC_ENERGY_REL_TOL;
+  const parabolic = Math.abs(specificEnergy) <= parabolicEnergyTol;
+  const bound = specificEnergy < -parabolicEnergyTol;
+
+  // Semi-major axis from energy: a = -mu / (2*energy). For parabolic escape,
+  // report +Infinity as an explicit unbound sentinel rather than leaking the
+  // sign of a near-zero floating-point denominator.
+  const semiMajorAxis = parabolic ? Infinity : -mu / (2 * specificEnergy);
 
   // Periapsis / apoapsis as center distances.
   // For a conic: periapsis = a(1-e). For bound orbits apoapsis = a(1+e).
   // For unbound (e >= 1) there is no apoapsis; use the semi-latus-rectum form
   // for periapsis so it stays finite: r_p = h^2 / (mu (1+e)).
   const periapsis = (hMag * hMag) / (mu * (1 + eccentricity));
-  const bound = specificEnergy < 0 && eccentricity < 1;
   const apoapsis = bound ? semiMajorAxis * (1 + eccentricity) : Infinity;
   const period = bound ? 2 * Math.PI * Math.sqrt((semiMajorAxis * semiMajorAxis * semiMajorAxis) / mu) : null;
 

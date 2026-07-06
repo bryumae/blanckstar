@@ -17,6 +17,9 @@ function accelerationFrom(shipPosition: Vector3, bodyPosition: Vector3, mu: numb
   const dy = bodyPosition.y - shipPosition.y;
   const dz = bodyPosition.z - shipPosition.z;
   const r2 = dx * dx + dy * dy + dz * dz;
+  if (r2 === 0) {
+    return { x: 0, y: 0, z: 0 };
+  }
   const r = Math.sqrt(r2);
   const factor = mu / (r2 * r); // mu / r^3
   return { x: dx * factor, y: dy * factor, z: dz * factor };
