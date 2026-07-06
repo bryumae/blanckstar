@@ -5,6 +5,7 @@ import { mountSequenceScreen, type ScriptConsoleController, type ConsoleSink } f
 import type { StorageLike } from '../../../src/net/storage';
 import { FORBIDDEN_API_NAMES } from '../../../src/sandbox/apiDocs';
 import type { SandboxVarEntry } from '../../../src/sandbox/vars';
+import type { EditorHost } from '../../../src/ui/sequence/editorHost';
 
 class FakeStorage implements StorageLike {
   map = new Map<string, string>();
@@ -35,16 +36,58 @@ function fakeController(): ScriptConsoleController & { runs: string[]; stops: nu
   };
 }
 
+class FakeEditorHost implements EditorHost {
+  readonly element = document.createElement('div');
+  value = '';
+  errorLine: number | null = null;
+  focused = false;
+  destroyed = false;
+  private listeners = new Set<(source: string) => void>();
+
+  constructor() {
+    this.element.className = 'script-editor fake-editor';
+  }
+
+  getValue(): string {
+    return this.value;
+  }
+  setValue(source: string): void {
+    this.value = source;
+  }
+  onChange(cb: (source: string) => void): () => void {
+    this.listeners.add(cb);
+    return () => {
+      this.listeners.delete(cb);
+    };
+  }
+  focus(): void {
+    this.focused = true;
+  }
+  setErrorLine(line: number | null): void {
+    this.errorLine = line;
+  }
+  destroy(): void {
+    this.destroyed = true;
+    this.listeners.clear();
+  }
+  input(source: string): void {
+    this.value = source;
+    for (const listener of [...this.listeners]) listener(source);
+  }
+}
+
 function mountWithSink(root: HTMLElement, storage = new FakeStorage(), controller = fakeController()) {
   let sink: ConsoleSink | null = null;
+  const editor = new FakeEditorHost();
   const handle = mountSequenceScreen(root, {
     storage,
     console: controller,
+    createEditorHost: () => editor,
     bindConsole: (s) => {
       sink = s;
     },
   });
-  return { storage, controller, sink: sink!, handle };
+  return { storage, controller, editor, sink: sink!, handle };
 }
 
 class FakeVarsStore {
@@ -88,6 +131,9 @@ describe('mountSequenceScreen', () => {
   it('renders code-sheet tabs and no feature mode tab bar', () => {
     mountWithSink(root);
     expect(root.querySelectorAll('.sequence-tab')).toHaveLength(0);
+    expect(root.querySelectorAll('.sheet-topbar')).toHaveLength(1);
+    expect(root.querySelectorAll('.script-editor-header')).toHaveLength(0);
+    expect(root.querySelector('.sheet-topbar .script-buttons')).not.toBeNull();
     expect(root.querySelector('.sheet-tab.is-active')!.textContent).toContain('sequence.js');
     expect([...root.querySelectorAll('.script-list-item.seeded .name')].map((e) => e.textContent)).toEqual([
       'Calculator',
@@ -115,35 +161,38 @@ describe('mountSequenceScreen', () => {
     ]);
   });
 
+  it('wheel-scrolls the sheet tab strip horizontally', () => {
+    mountWithSink(root);
+    const tabs = root.querySelector('.sheet-tabs') as HTMLElement;
+    tabs.scrollLeft = 10;
+    tabs.dispatchEvent(new WheelEvent('wheel', { deltaY: 75, bubbles: true, cancelable: true }));
+    expect(tabs.scrollLeft).toBe(85);
+  });
+
   it('multiple sheets preserve separate editor content and output while switching', () => {
-    const { sink } = mountWithSink(root);
-    const textarea = root.querySelector('.script-textarea') as HTMLTextAreaElement;
-    textarea.value = 'log("user")';
-    textarea.dispatchEvent(new Event('input'));
+    const { sink, editor } = mountWithSink(root);
+    editor.input('log("user")');
     sink.appendLine('log', 'user output');
 
     [...root.querySelectorAll('.script-list-item')].find((e) => e.textContent === 'Calculator')!.dispatchEvent(new Event('click'));
-    textarea.value = 'log("calc")';
-    textarea.dispatchEvent(new Event('input'));
+    editor.input('log("calc")');
     sink.appendLine('log', 'calc output');
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('calc output');
 
     (root.querySelector('.sheet-tab[data-sheet^="script:"]') as HTMLButtonElement).click();
-    expect(textarea.value).toBe('log("user")');
+    expect(editor.value).toBe('log("user")');
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('user output');
 
     (root.querySelector('.sheet-tab[data-sheet="seed:calculator"]') as HTMLButtonElement).click();
-    expect(textarea.value).toBe('log("calc")');
+    expect(editor.value).toBe('log("calc")');
     expect(root.querySelector('.script-console-lines')!.textContent).toContain('calc output');
   });
 
   it('Run passes the active sheet source and bridge output lands on that sheet', () => {
     const controller = fakeController();
-    const { sink } = mountWithSink(root, new FakeStorage(), controller);
+    const { sink, editor } = mountWithSink(root, new FakeStorage(), controller);
     [...root.querySelectorAll('.script-list-item')].find((e) => e.textContent === 'Calculator')!.dispatchEvent(new Event('click'));
-    const textarea = root.querySelector('.script-textarea') as HTMLTextAreaElement;
-    textarea.value = 'log(123)';
-    textarea.dispatchEvent(new Event('input'));
+    editor.input('log(123)');
     (root.querySelector('.script-btn.run') as HTMLButtonElement).click();
     expect(controller.runs).toEqual(['log(123)']);
     sink.appendLine('log', 'ran calculator');
@@ -181,11 +230,9 @@ describe('mountSequenceScreen', () => {
 
   it('open tabs, active tab, editor output, and split restore from storage', () => {
     const storage = new FakeStorage();
-    const { sink, handle } = mountWithSink(root, storage);
+    const { sink, editor, handle } = mountWithSink(root, storage);
     [...root.querySelectorAll('.script-list-item')].find((e) => e.textContent === 'Calculator')!.dispatchEvent(new Event('click'));
-    const textarea = root.querySelector('.script-textarea') as HTMLTextAreaElement;
-    textarea.value = 'log("persisted")';
-    textarea.dispatchEvent(new Event('input'));
+    editor.input('log("persisted")');
     sink.appendLine('log', 'persisted output');
     const body = root.querySelector('.script-workspace-body') as HTMLElement;
     body.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 400, right: 1000, bottom: 400, x: 0, y: 0, toJSON: () => '' });
@@ -195,9 +242,9 @@ describe('mountSequenceScreen', () => {
     handle.destroy();
 
     const root2 = document.createElement('div');
-    mountWithSink(root2, storage);
+    const second = mountWithSink(root2, storage);
     expect(root2.querySelector('.sheet-tab.is-active')!.textContent).toContain('calculator.js');
-    expect((root2.querySelector('.script-textarea') as HTMLTextAreaElement).value).toBe('log("persisted")');
+    expect(second.editor.value).toBe('log("persisted")');
     // Restored sheets start on the drawers (issue #30); history is a click away.
     expect((root2.querySelector('.script-console-output-view') as HTMLElement).hidden).toBe(true);
     (root2.querySelector('.script-btn.output') as HTMLButtonElement).click();
@@ -445,11 +492,29 @@ describe('mountSequenceScreen', () => {
     expect(burnRow.textContent).toContain('await');
   });
 
-  it('renders a line-number gutter matching the source line count', () => {
-    mountWithSink(root);
-    const textarea = root.querySelector('.script-textarea') as HTMLTextAreaElement;
-    textarea.value = 'a\nb\nc';
-    textarea.dispatchEvent(new Event('input'));
-    expect(root.querySelectorAll('.script-gutter div')).toHaveLength(3);
+  it('forwards script error lines to the editor host and clears them on edit/run', () => {
+    const { sink, editor } = mountWithSink(root);
+    sink.setError('boom', 3);
+    expect(editor.errorLine).toBe(3);
+
+    editor.input('log("fixed")');
+    expect(editor.errorLine).toBeNull();
+
+    sink.setError('again', 2);
+    expect(editor.errorLine).toBe(2);
+    (root.querySelector('.script-btn.run') as HTMLButtonElement).click();
+    expect(editor.errorLine).toBeNull();
+  });
+
+  it('restores a sheet error line when switching back to that sheet', () => {
+    const { sink, editor } = mountWithSink(root);
+    sink.setError('boom', 3);
+    expect(editor.errorLine).toBe(3);
+
+    [...root.querySelectorAll('.script-list-item')].find((e) => e.textContent === 'Calculator')!.dispatchEvent(new Event('click'));
+    expect(editor.errorLine).toBeNull();
+
+    (root.querySelector('.sheet-tab[data-sheet^="script:"]') as HTMLButtonElement).click();
+    expect(editor.errorLine).toBe(3);
   });
 });

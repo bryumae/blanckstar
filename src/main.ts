@@ -7,6 +7,7 @@ import type { ScreenId } from './ui/shell';
 import { mountTelescopeScreen } from './ui/telescope';
 import { mountSequenceScreen } from './ui/sequence';
 import type { ConsoleSink } from './ui/sequence';
+import { createCodeMirrorEditorHost } from './ui/sequence/codeMirrorEditorHost';
 import { mountDataScreen } from './ui/data';
 import { mountEphemerisScreen } from './ui/ephemeris';
 import { mountMeasurementLogScreen } from './ui/measurementLog';
@@ -202,6 +203,7 @@ async function main(): Promise<void> {
     storage: localStorage,
     console: bridge,
     sandboxVars,
+    createEditorHost: createCodeMirrorEditorHost,
     bindConsole: (s) => {
       sink = s;
     },

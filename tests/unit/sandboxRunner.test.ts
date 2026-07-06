@@ -82,9 +82,15 @@ describe('extractLine', () => {
     expect(extractLine(e)).toBeNull();
   });
 
-  it('parses a 1-based line from an <anonymous> frame (offset by header line)', () => {
+  it('parses a 1-based line from an <anonymous> frame (offset by AsyncFunction wrapper)', () => {
     const e = new Error('x');
     e.stack = 'Error: x\n    at eval (<anonymous>:5:9)';
-    expect(extractLine(e)).toBe(4);
+    expect(extractLine(e)).toBe(3);
+  });
+
+  it('parses Firefox AsyncFunction stack frames', () => {
+    const e = new Error('x');
+    e.stack = 'anonymous@debugger eval code line 303 > eval line 4 > AsyncFunction:4:7';
+    expect(extractLine(e)).toBe(2);
   });
 });

@@ -111,6 +111,44 @@ with a clean global scope (no DOM, no network, no `importScripts`). Every
 instrument/ship call and `wait()` is async — `await` them. Multiple named
 scripts persist in `localStorage` and survive retries.
 
+| API | Kind | Await? |
+|---|---|---|
+| `time.now` | function | yes |
+| `wait` | function | yes |
+| `log` | function | no |
+| `log.measurements` | function | yes |
+| `vars` | variable | no |
+| `radio.lockEarth` | function | yes |
+| `sensors.sunDirection` | function | yes |
+| `sensors.starAttitude` | function | yes |
+| `telescope.angularSeparation` | function | yes |
+| `ephemeris.position` | function | yes |
+| `ephemeris.velocity` | function | yes |
+| `vec` | function | no |
+| `add` | function | no |
+| `sub` | function | no |
+| `mul` | function | no |
+| `dot` | function | no |
+| `cross` | function | no |
+| `norm` | function | no |
+| `normalize` | function | no |
+| `angleBetween` | function | no |
+| `ship.point` | function | yes |
+| `ship.burn` | function | yes |
+| `ship.scheduleBurn` | function | yes |
+| `ship.cancelBurn` | function | yes |
+| `ship.status` | function | yes |
+| `predict` | function | no |
+| `C` | variable | no |
+| `MU_SUN` | variable | no |
+| `MU_EARTH` | variable | no |
+| `MU_MOON` | variable | no |
+| `R_EARTH` | variable | no |
+| `R_MOON` | variable | no |
+| `R_SOI_EARTH` | variable | no |
+| `AU` | variable | no |
+| `SHIP_MASS_KG` | variable | no |
+
 ```js
 // time
 time.now()                       // -> Promise<number>, sim time (Unix seconds, UTC clock)
@@ -119,6 +157,11 @@ await wait(seconds)              // suspends the script while sim time advances
 // logging
 log(...values)                   // prints to the console pane
 await log.measurements()         // -> Measurement[]; the full measurement log this run
+
+// persistent workspace variables (current game run)
+vars.burnTime = await time.now() + 3600;
+log(vars.burnTime);
+delete vars.burnTime;
 
 // radio
 const lock = await radio.lockEarth();

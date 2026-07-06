@@ -12,6 +12,30 @@ async function openScriptConsole(page: Page): Promise<void> {
   await page.getByRole('button', { name: /Script Console/ }).click();
 }
 
+async function setEditorSource(page: Page, source: string): Promise<void> {
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  await editor.fill(source);
+}
+
+async function openCompletion(page: Page, source: string): Promise<void> {
+  await setEditorSource(page, source);
+  await page.locator('.cm-content').press('ControlOrMeta+Space');
+}
+
+test('CodeMirror editor renders with line numbers, JS highlighting, and persisted typing', async ({ page }) => {
+  await openScriptConsole(page);
+
+  await expect(page.locator('.cm-editor')).toBeVisible();
+  await expect(page.locator('.cm-lineNumbers')).toBeVisible();
+  await setEditorSource(page, 'await ship.status();\nlog("ready");');
+  await expect(page.locator('.cm-line span').first()).toBeVisible();
+
+  await page.getByRole('button', { name: /Data/ }).click();
+  await page.getByRole('button', { name: /Script Console/ }).click();
+  await expect(page.locator('.cm-content')).toContainText('await ship.status();');
+});
+
 test('a fresh sheet shows the API reference drawers, not the output panel', async ({ page }) => {
   await openScriptConsole(page);
 
@@ -76,7 +100,7 @@ test('forbidden API names are absent and ship.burn is documented as awaited', as
 test('vars persist for the current game run and can be described and deleted in the drawer', async ({ page }) => {
   await openScriptConsole(page);
 
-  await page.locator('.script-textarea').fill('vars.burnTime = 123;\nlog("stored", vars.burnTime);');
+  await setEditorSource(page, 'vars.burnTime = 123;\nlog("stored", vars.burnTime);');
   await page.locator('.script-btn.run').click();
   await expect(page.getByText('script finished')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Close console output' }).click();
@@ -90,7 +114,10 @@ test('vars persist for the current game run and can be described and deleted in 
   await page.getByRole('button', { name: /Script Console/ }).click();
   await expect(page.locator('.api-ref-row.player', { hasText: 'burnTime' }).getByLabel('Description for burnTime')).toHaveValue('main burn');
 
-  await page.locator('.script-textarea').fill('log("saved", vars.burnTime);');
+  await openCompletion(page, 'vars.');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toContainText('vars.burnTime');
+
+  await setEditorSource(page, 'log("saved", vars.burnTime);');
   await page.locator('.script-btn.run').click();
   await expect(page.getByText('saved 123')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Close console output' }).click();
@@ -98,4 +125,34 @@ test('vars persist for the current game run and can be described and deleted in 
   page.on('dialog', (dialog) => dialog.accept());
   await page.getByLabel('Delete burnTime').click();
   await expect(page.locator('.api-ref-row.player', { hasText: 'burnTime' })).toHaveCount(0);
+});
+
+test('autocomplete is registry-driven with async hints and forbidden names absent', async ({ page }) => {
+  await openScriptConsole(page);
+
+  await openCompletion(page, 'ship.bu');
+  const popup = page.locator('.cm-tooltip-autocomplete');
+  await expect(popup).toContainText('ship.burn');
+  await expect(popup).toContainText('async - use await');
+  await expect(popup.locator('[aria-selected]')).toHaveCSS('background-color', 'rgb(76, 201, 224)');
+  for (const forbidden of ['solveTransfer', 'autopilot', 'debug']) {
+    await expect(popup).not.toContainText(forbidden);
+  }
+  await page.locator('.cm-content').press('Tab');
+  await expect(page.locator('.cm-content')).toContainText('ship.burn(');
+
+  await openCompletion(page, 'aw');
+  await expect(popup).toContainText('await');
+  await openCompletion(page, 'del');
+  await expect(popup).toContainText('delete');
+});
+
+test('script errors highlight the offending CodeMirror line', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'WebKit omits source lines for AsyncFunction stacks; unit coverage verifies line forwarding.');
+  await openScriptConsole(page);
+
+  await setEditorSource(page, 'log("before");\nthrow new Error("bad");');
+  await page.locator('.script-btn.run').click();
+  await expect(page.locator('.script-console-line.error')).toContainText('line 2', { timeout: 20_000 });
+  await expect(page.locator('.cm-script-error-line')).toBeVisible();
 });

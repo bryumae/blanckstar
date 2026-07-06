@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Closes #32: upgrades the Script Console editor from the hand-rolled
+  textarea/gutter to CodeMirror 6, using only the scoped CM6 packages needed
+  for state, view, language, JavaScript, commands, and autocomplete. The
+  sequence screen now talks to an injected `EditorHost` seam so unit tests
+  avoid browser-only editor layout APIs, while the production host provides
+  JavaScript highlighting, line numbers, dark theme styling, registry-driven
+  sandbox API completions/hover docs, live `vars.*` completions, async
+  `await` hints, and visual error-line highlighting. Forbidden §8.3 APIs stay
+  absent because completions are derived from the central registry.
+
 - Closes #31: adds persisted sandbox `vars` as the Script Console's
   player-owned "backup computer" memory. Scripts can assign/read/delete
   JSON-safe values with `vars.name`, with synchronous read-after-write, finite
